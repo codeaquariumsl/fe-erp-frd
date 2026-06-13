@@ -1,0 +1,236 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', 'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Custom animation delays */
+  .animation-delay-75 { animation-delay: 75ms; }
+  .animation-delay-150 { animation-delay: 150ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+
+  /* Code Aqua ERP — glassmorphism utilities */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 151, 167, 0.12);
+  }
+
+  .glass-sidebar {
+    background: rgba(30, 41, 59, 0.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Gradient utilities */
+  .gradient-teal {
+    background: linear-gradient(135deg, #0097A7 0%, #00BCD4 100%);
+  }
+
+  .gradient-slate {
+    background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+  }
+
+  .gradient-amber {
+    background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+  }
+
+  /* Soft shadow utilities */
+  .shadow-teal {
+    box-shadow: 0 4px 24px rgba(0, 151, 167, 0.18);
+  }
+
+  .shadow-card {
+    box-shadow: 0 2px 12px rgba(30, 41, 59, 0.08), 0 1px 3px rgba(30, 41, 59, 0.05);
+  }
+
+  /* Active nav indicator */
+  .nav-active {
+    border-left: 3px solid #0097A7;
+    background: linear-gradient(90deg, rgba(0, 151, 167, 0.15) 0%, transparent 100%);
+  }
+}
+
+@layer base {
+  :root {
+    /* === Code Aqua ERP Design System === */
+
+    /* Backgrounds */
+    --background: 210 40% 98%;           /* #F8FAFC - light slate */
+    --foreground: 215 28% 17%;           /* #1E293B - dark slate */
+
+    /* Card */
+    --card: 0 0% 100%;                   /* #FFFFFF */
+    --card-foreground: 215 28% 17%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+
+    /* Primary — Teal */
+    --primary: 187 100% 33%;             /* #0097A7 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary — Dark Slate (light variant for surfaces) */
+    --secondary: 210 40% 96%;            /* Light slate surface */
+    --secondary-foreground: 215 28% 17%;
+
+    /* Muted */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;     /* Slate 500 */
+
+    /* Accent — Amber */
+    --accent: 38 92% 50%;               /* #F59E0B */
+    --accent-foreground: 215 28% 17%;
+
+    /* Destructive / Error */
+    --destructive: 0 84% 60%;            /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 214 32% 91%;              /* Slate 200 */
+    --input: 214 32% 91%;
+    --ring: 187 100% 33%;               /* Teal ring */
+
+    /* Border radius — rounded enterprise feel */
+    --radius: 0.75rem;                   /* 12px */
+
+    /* Charts — teal palette */
+    --chart-1: 187 100% 33%;            /* Teal */
+    --chart-2: 38 92% 50%;              /* Amber */
+    --chart-3: 142 71% 45%;             /* Green */
+    --chart-4: 215 28% 17%;             /* Slate */
+    --chart-5: 200 98% 39%;             /* Cyan */
+
+    /* === Sidebar — Dark Slate Theme === */
+    --sidebar-background: 215 28% 17%;  /* #1E293B */
+    --sidebar-foreground: 210 40% 92%;  /* Light slate text */
+    --sidebar-primary: 187 100% 33%;    /* Teal active */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 25%;      /* Slightly lighter slate for hover */
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 215 25% 25%;
+    --sidebar-ring: 187 100% 33%;
+  }
+
+  .dark {
+    --background: 215 28% 10%;
+    --foreground: 210 40% 96%;
+    --card: 215 28% 14%;
+    --card-foreground: 210 40% 96%;
+    --popover: 215 28% 14%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 187 100% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 25% 20%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 215 25% 20%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 215 28% 17%;
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 215 25% 22%;
+    --input: 215 25% 22%;
+    --ring: 187 100% 42%;
+    --chart-1: 187 70% 50%;
+    --chart-2: 38 92% 55%;
+    --chart-3: 142 60% 50%;
+    --chart-4: 200 80% 55%;
+    --chart-5: 270 65% 60%;
+    --sidebar-background: 215 35% 10%;
+    --sidebar-foreground: 210 40% 92%;
+    --sidebar-primary: 187 100% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 28% 17%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 215 28% 17%;
+    --sidebar-ring: 187 100% 42%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* === Code Aqua ERP — Component Overrides === */
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 151, 167, 0.25);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 151, 167, 0.45);
+}
+
+/* Micro-animations */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-teal {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 151, 167, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(0, 151, 167, 0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.25s ease-out;
+}
+.animate-pulse-teal {
+  animation: pulse-teal 2s infinite;
+}
+
+/* Accordion animations */
+@layer utilities {
+  @keyframes accordion-down {
+    from { height: 0; }
+    to   { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to   { height: 0; }
+  }
+  @keyframes collapse {
+    from { height: var(--radix-collapsible-content-height); opacity: 1; }
+    to   { height: 0; opacity: 0; }
+  }
+  @keyframes expand {
+    from { height: 0; opacity: 0; }
+    to   { height: var(--radix-collapsible-content-height); opacity: 1; }
+  }
+}

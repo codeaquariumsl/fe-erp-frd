@@ -1,0 +1,280 @@
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import// Generate Stock Summary PDF
+export const generateStockSummaryPDF = (stockSummary: any[]) => {
+  const doc = new jsPDF() as jsPDFWithAutoTable;
+  let yPos = addHeader(doc, 'Stock Summary Report', `Generated on ${format(new Date(), 'PPP')}`);
+
+  // Add table
+  (doc as jsPDFWithAutoTable).autoTable({
+    startY: yPos,
+    head: [['Item', 'Total Qty', 'Total Weight', 'Stores']],
+    body: stockSummary.map(item => [
+      `${item.Item?.color || ''} ${item.Item?.name || ''} ${item.Item?.country || ''} ${item.Item?.weight ? `(${item.Item.weight}kg)` : ''}`.trim(),
+      item.totalQty || 0,
+      item.totalWeight ? `${item.totalWeight} kg` : '0 kg',
+      item.storeCount || 0
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185] },
+    styles: { fontSize: PDF_STYLES.fontSize.normal }
+  });html2canvas';
+import { format } from 'date-fns';
+
+// Import and extend jsPDF types
+import { UserOptions } from 'jspdf-autotable';
+
+interface jsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: UserOptions) => jsPDF;
+}
+
+// Common PDF styling
+const PDF_STYLES = {
+  headerColor: {
+    fill: [41, 128, 185] as [number, number, number], // Blue
+    text: [255, 255, 255] as [number, number, number] // White
+  },
+  textColor: [44, 62, 80] as [number, number, number], // Dark Gray
+  fontSize: {
+    title: 18,
+    subtitle: 14,
+    header: 12,
+    normal: 10
+  },
+  margin: {
+    top: 20,
+    right: 20,
+    bottom: 20,
+    left: 20
+  }
+};
+
+// Helper function to add header to PDF
+const addHeader = (doc: jsPDF, title: string, subtitle?: string) => {
+  doc.setFontSize(PDF_STYLES.fontSize.title);
+  doc.setTextColor(41, 128, 185); // Blue color for header
+  doc.text(title, PDF_STYLES.margin.left, PDF_STYLES.margin.top);
+
+  if (subtitle) {
+    doc.setFontSize(PDF_STYLES.fontSize.subtitle);
+    doc.setTextColor(44, 62, 80); // Dark gray for text
+    doc.text(subtitle, PDF_STYLES.margin.left, PDF_STYLES.margin.top + 10);
+    return PDF_STYLES.margin.top + 20; // Return next Y position
+  }
+  return PDF_STYLES.margin.top + 15;
+};
+
+// Helper function to add metadata
+const addMetadata = (doc: jsPDF, data: { [key: string]: string }) => {
+  doc.setFontSize(PDF_STYLES.fontSize.normal);
+  doc.setTextColor(44, 62, 80); // Dark gray for text
+  
+  let yPos = PDF_STYLES.margin.top + 30;
+  Object.entries(data).forEach(([key, value]) => {
+    doc.text(`${key}: ${value}`, PDF_STYLES.margin.left, yPos);
+    yPos += 7;
+  });
+  return yPos + 10;
+};
+
+// Generate Stock Summary PDF
+export const generateStockSummaryPDF = (stockSummary: any[]) => {
+  const doc = new jsPDF() as jsPDFWithAutoTable;
+  let yPos = addHeader(doc, 'Stock Summary Report', `Generated on ${format(new Date(), 'PPP')}`);
+
+  // Add table
+  (doc as any).autoTable({
+    startY: yPos,
+    head: [['Item', 'Total Qty', 'Total Weight', 'Stores']],
+    body: stockSummary.map(item => [
+      `${item.Item.color} ${item.Item.name} ${item.Item.country} (${item.Item.weight}kg)`,
+      item.totalQty,
+      `${item.totalWeight} kg`,
+      item.storeCount || 0
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185] },
+    styles: { fontSize: PDF_STYLES.fontSize.normal }
+  });
+
+  doc.save('stock-summary.pdf');
+};
+
+// Generate Stock Movement Report PDF
+export const generateStockMovementPDF = (storeMovements: any) => {
+  const doc = new jsPDF() as jsPDFWithAutoTable;
+  let yPos = addHeader(doc, 'Stock Movement Report', `Generated on ${format(new Date(), 'PPP')}`);
+
+  const firstMovement = storeMovements?.[0] || {};
+  const storeInfo = firstMovement.storeInfo || {};
+
+  // Add summary section
+  yPos = addMetadata(doc, {
+    'Store': firstMovement.Store?.name || 'All Stores',
+    'Total Inbound': (storeInfo.totalInbound || 0).toString(),
+    'Total Outbound': (storeInfo.totalOutbound || 0).toString(),
+    'Net Movement': (storeInfo.netMovement || 0).toString(),
+    'Unique Items': (storeInfo.uniqueItems || 0).toString()
+  });
+
+  // Add movement history table
+  (doc as any).autoTable({
+    startY: yPos,
+    head: [['Date & Time', 'Item', 'Type', 'Direction', 'Quantity', 'Weight', 'Remarks']],
+    body: (firstMovement.movements || []).map((movement: any) => [
+      format(new Date(movement.date || new Date()), 'Pp'),
+      movement.Stock?.Item ? `${movement.Stock.Item.color || ''} ${movement.Stock.Item.name || ''}`.trim() : '-',
+      movement.documentType || '-',
+      movement.inOut || '-',
+      movement.qty || 0,
+      movement.weight ? `${movement.weight} kg` : '-',
+      movement.remark || '-'
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: PDF_STYLES.headerColor },
+    styles: { fontSize: PDF_STYLES.fontSize.normal }
+  });
+
+  doc.save('stock-movements.pdf');
+};
+
+// Generate Sales Report PDF
+export const generateSalesReportPDF = (salesSummary: any, salesDetails: any[]) => {
+  const doc = new jsPDF() as jsPDFWithAutoTable;
+  let yPos = addHeader(doc, 'Sales Report', `Generated on ${format(new Date(), 'PPP')}`);
+
+  // Add summary section
+  yPos = addMetadata(doc, {
+    'Total Sales': `LKR ${salesSummary.totalSales?.toLocaleString() || 0}`,
+    'Total Orders': salesSummary.totalOrders?.toString() || '0',
+    'Average Order Value': `LKR ${salesSummary.averageOrderValue?.toLocaleString() || 0}`,
+    'Total Customers': salesSummary.totalCustomers?.toString() || '0'
+  });
+
+  // Add sales details table
+  (doc as any).autoTable({
+    startY: yPos,
+    head: [['Order Number', 'Date', 'Customer', 'Items', 'Total Amount', 'Status']],
+    body: salesDetails.map(sale => [
+      sale.orderNumber,
+      format(new Date(sale.orderDate), 'PP'),
+      sale.customerName,
+      sale.itemCount,
+      `LKR ${sale.totalAmount.toLocaleString()}`,
+      sale.status
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: PDF_STYLES.headerColor },
+    styles: { fontSize: PDF_STYLES.fontSize.normal }
+  });
+
+  doc.save('sales-report.pdf');
+};
+
+// Generate GRN Report PDF
+export const generateGRNReportPDF = (grnSummary: any[]) => {
+  const doc = new jsPDF() as jsPDFWithAutoTable;
+  let yPos = addHeader(doc, 'Goods Receipt Note Report', `Generated on ${format(new Date(), 'PPP')}`);
+
+  // Add table
+  doc.autoTable({
+    startY: yPos,
+    head: [['GRN Number', 'Date', 'Supplier', 'Store', 'Status', 'Total Value']],
+    body: grnSummary.map(grn => [
+      grn.grnNumber,
+      format(new Date(grn.grnDate), 'PP'),
+      grn.Supplier.name,
+      grn.Store?.name || '-',
+      grn.status,
+      `LKR ${grn.totalValue.toLocaleString()}`
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: PDF_STYLES.headerColor },
+    styles: { fontSize: PDF_STYLES.fontSize.normal }
+  });
+
+  doc.save('grn-report.pdf');
+};
+
+// Generate GIN Report PDF
+export const generateGINReportPDF = (ginSummary: any[]) => {
+  const doc = new jsPDF() as jsPDFWithAutoTable;
+  let yPos = addHeader(doc, 'Goods Issue Note Report', `Generated on ${format(new Date(), 'PPP')}`);
+
+  // Add table
+  doc.autoTable({
+    startY: yPos,
+    head: [['GIN Number', 'Date', 'Issue Store', 'Transfer Store', 'Status', 'Items']],
+    body: ginSummary.map(gin => [
+      gin.ginNumber,
+      format(new Date(gin.ginDate), 'PP'),
+      gin.IssueStore?.name || '-',
+      gin.TransferStore?.name || '-',
+      gin.status,
+      gin.GINItems.length
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: PDF_STYLES.headerColor },
+    styles: { fontSize: PDF_STYLES.fontSize.normal }
+  });
+
+  doc.save('gin-report.pdf');
+};
+
+// Generate Dashboard Report PDF
+export const generateDashboardPDF = async (dashboardRef: HTMLDivElement) => {
+  // Capture the dashboard content as an image
+  const canvas = await html2canvas(dashboardRef, {
+    scale: 2,
+    logging: false,
+    useCORS: true
+  });
+  
+  const imageData = canvas.toDataURL('image/png');
+  
+  // Create PDF with captured image
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'px',
+    format: [canvas.width, canvas.height]
+  });
+  
+  doc.addImage(imageData, 'PNG', 0, 0, canvas.width, canvas.height);
+  doc.save('dashboard-report.pdf');
+};
+
+// Generate Analytics Report PDF
+export const generateAnalyticsPDF = (inventoryValuation: any[]) => {
+  const doc = new jsPDF() as jsPDFWithAutoTable;
+  let yPos = addHeader(doc, 'Inventory Valuation Report', `Generated on ${format(new Date(), 'PPP')}`);
+
+  // Calculate totals
+  const totals = inventoryValuation.reduce((acc, item) => ({
+    totalQty: acc.totalQty + (item.totalQty || 0),
+    totalValue: acc.totalValue + (item.totalValue || 0)
+  }), { totalQty: 0, totalValue: 0 });
+
+  // Add summary section
+  yPos = addMetadata(doc, {
+    'Total Items': inventoryValuation.length.toString(),
+    'Total Quantity': totals.totalQty.toString(),
+    'Total Value': `LKR ${totals.totalValue?.toLocaleString() || '0'}`
+  });
+
+  // Add table
+  doc.autoTable({
+    startY: yPos,
+    head: [['Item', 'Total Qty', 'Avg Cost Price', 'Total Value']],
+    body: inventoryValuation.map(item => [
+      item.itemName || '-',
+      item.totalQty || 0,
+      `LKR ${(item.avgCostPrice || 0).toLocaleString()}`,
+      `LKR ${(item.totalValue || 0).toLocaleString()}`
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: PDF_STYLES.headerColor },
+    styles: { fontSize: PDF_STYLES.fontSize.normal }
+  });
+
+  doc.save('inventory-valuation.pdf');
+};
