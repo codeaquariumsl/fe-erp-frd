@@ -723,6 +723,8 @@ export interface Customer {
   createdAt: string
   updatedAt: string
   CategoryDiscounts?: CategoryDiscount[]
+  latitude?: number | null
+  longitude?: number | null
 }
 
 // Credit Note Types

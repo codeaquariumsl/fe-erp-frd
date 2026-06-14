@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -70,6 +70,8 @@ interface CustomerFormData {
   routeId: number | null
   isTaxInclusive: boolean
   taxNumber: string
+  latitude: string
+  longitude: string
 }
 
 export default function CustomersPage() {
@@ -101,6 +103,8 @@ export default function CustomersPage() {
     routeId: null,
     isTaxInclusive: false,
     taxNumber: "",
+    latitude: "",
+    longitude: "",
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
@@ -359,6 +363,8 @@ export default function CustomersPage() {
         creditLimit: Number(formData.creditLimit),
         creditPeriod: Number(formData.creditPeriod),
         parentId: formData.parentId || null,
+        latitude: formData.latitude.trim() !== "" && !isNaN(Number(formData.latitude)) ? Number(formData.latitude) : null,
+        longitude: formData.longitude.trim() !== "" && !isNaN(Number(formData.longitude)) ? Number(formData.longitude) : null,
       }
 
       await customersApi.create(payload)
@@ -390,6 +396,8 @@ export default function CustomersPage() {
         isTaxInclusive: formData.isTaxInclusive,
         taxNumber: formData.taxNumber || "",
         discountRate: formData.discountRate,
+        latitude: formData.latitude.trim() !== "" && !isNaN(Number(formData.latitude)) ? Number(formData.latitude) : null,
+        longitude: formData.longitude.trim() !== "" && !isNaN(Number(formData.longitude)) ? Number(formData.longitude) : null,
       }
 
       // Add optional fields for non-walk-in customers
@@ -446,6 +454,8 @@ export default function CustomersPage() {
       routeId: (customer as any).routes.length > 0 ? (customer as any).routes[0].id : null,
       isTaxInclusive: (customer as any).isTaxInclusive || false,
       taxNumber: (customer as any).taxNumber || "",
+      latitude: customer.latitude?.toString() || "",
+      longitude: customer.longitude?.toString() || "",
     })
     setFormErrors({})
     setValidationErrors({})
@@ -505,6 +515,8 @@ export default function CustomersPage() {
       routeId: null,
       isTaxInclusive: false,
       taxNumber: "",
+      latitude: "",
+      longitude: "",
     })
     setFormErrors({})
     setValidationErrors({})
@@ -957,6 +969,26 @@ export default function CustomersPage() {
                     <div className="text-xs text-red-600 mt-1">{formErrors.address}</div>
                   )}
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="latitude">Latitude</Label>
+                    <Input
+                      id="latitude"
+                      placeholder="e.g. 6.9271"
+                      value={formData.latitude}
+                      onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="longitude">Longitude</Label>
+                    <Input
+                      id="longitude"
+                      placeholder="e.g. 79.8612"
+                      value={formData.longitude}
+                      onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 gap-4">
                   {/* <div>
                     <Label htmlFor="discountRate">Discount Rate (%)</Label>
@@ -1236,6 +1268,7 @@ export default function CustomersPage() {
                   <TableHead className="text-xs py-2">Route</TableHead>
                   <TableHead className="text-xs py-2">Contact</TableHead>
                   <TableHead className="text-xs py-2">Email</TableHead>
+                  <TableHead className="text-xs py-2">Location</TableHead>
                   {/* <TableHead>Delivery Time</TableHead> */}
                   {/* <TableHead>Status</TableHead> */}
                   <TableHead className="text-xs py-2">Actions</TableHead>
@@ -1290,6 +1323,24 @@ export default function CustomersPage() {
                       </div>
                     </TableCell>
                     <TableCell>{customer.email}</TableCell>
+                    <TableCell className="py-2">
+                      {customer.latitude && customer.longitude ? (
+                        <div className="text-xs">
+                          <div>Lat: {customer.latitude}</div>
+                          <div>Lng: {customer.longitude}</div>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${customer.latitude},${customer.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline flex items-center gap-0.5 mt-0.5"
+                          >
+                            <MapPin className="h-3 w-3 inline text-primary" /> Map Link
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Not Set</span>
+                      )}
+                    </TableCell>
                     {/* <TableCell>{customer.deliveryTime} h</TableCell> */}
                     {/* <TableCell>{getStatusBadge(customer.status)}</TableCell> */}
                     <TableCell className="py-2">
@@ -1343,74 +1394,110 @@ export default function CustomersPage() {
                 <DialogTitle className="mb-1 text-lg font-bold text-primary">Customer Details</DialogTitle>
               </DialogHeader>
               {viewCustomer && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mt-2 text-xs">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Name</div>
-                    <div className="font-semibold text-base">{viewCustomer.name}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Type</div>
-                    <div className="font-semibold text-base">{viewCustomer.type === "Walk-in" ? "Walk-in Customer" : viewCustomer.type}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Parent</div>
-                    <div className="font-semibold text-base">
-                      {viewCustomer.parentId ?
-                        (customers.find((c) => c.id === viewCustomer.parentId)?.name || `Parent ID: ${viewCustomer.parentId}`)
-                        : "Main Customer"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Assigned Route</div>
-                    <div className="font-semibold text-base">
-                      {(viewCustomer as any).routeId ? (
-                        (() => {
-                          const route = routes.find((r) => r.id === (viewCustomer as any).routeId)
-                          return route ? `${route.routeName} - ${route.city}` : `Route ID: ${(viewCustomer as any).routeId}`
-                        })()
-                      ) : "No Route Assigned"}
-                    </div>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <div className="text-xs text-muted-foreground">Address</div>
-                    <div className="font-semibold text-base">{viewCustomer.address}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Contact Person</div>
-                    <div className="font-semibold text-base">{viewCustomer.contactPerson}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Contact Number</div>
-                    <div className="font-semibold text-base">{viewCustomer.contactNumber}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Email</div>
-                    <div className="font-semibold text-base">{viewCustomer.email}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Credit Limit</div>
-                    <div className="font-semibold text-base">LKR {((viewCustomer as any).creditLimit || 0).toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Credit Period</div>
-                    <div className="font-semibold text-base">{(viewCustomer as any).creditPeriod || 30} days</div>
-                  </div>
-                  {/* <div>
-                    <div className="text-xs text-muted-foreground">Discount Rate (%)</div>
-                    <div className="font-semibold text-base">{(viewCustomer as any).discountRate || 0} %</div>
-                  </div> */}
-                  <div>
-                    <div className="text-xs text-muted-foreground">Tax Inclusive</div>
-                    <div className="font-semibold text-base">
-                      {(viewCustomer as any).isTaxInclusive ? "Yes" : "No"}
-                    </div>
-                  </div>
-                  {(viewCustomer as any).isTaxInclusive && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                  {/* Left Section: Details */}
+                  <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mt-2 text-xs">
                     <div>
-                      <div className="text-xs text-muted-foreground">Tax Number</div>
-                      <div className="font-semibold text-base">{(viewCustomer as any).taxNumber || "N/A"}</div>
+                      <div className="text-xs text-muted-foreground">Name</div>
+                      <div className="font-semibold text-base">{viewCustomer.name}</div>
                     </div>
-                  )}
+                    <div>
+                      <div className="text-xs text-muted-foreground">Type</div>
+                      <div className="font-semibold text-base">{viewCustomer.type === "Walk-in" ? "Walk-in Customer" : viewCustomer.type}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Parent</div>
+                      <div className="font-semibold text-base">
+                        {viewCustomer.parentId ?
+                          (customers.find((c) => c.id === viewCustomer.parentId)?.name || `Parent ID: ${viewCustomer.parentId}`)
+                          : "Main Customer"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Assigned Route</div>
+                      <div className="font-semibold text-base">
+                        {(viewCustomer as any).routeId ? (
+                          (() => {
+                            const route = routes.find((r) => r.id === (viewCustomer as any).routeId)
+                            return route ? `${route.routeName} - ${route.city}` : `Route ID: ${(viewCustomer as any).routeId}`
+                          })()
+                        ) : "No Route Assigned"}
+                      </div>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <div className="text-xs text-muted-foreground">Address</div>
+                      <div className="font-semibold text-base">{viewCustomer.address}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Contact Person</div>
+                      <div className="font-semibold text-base">{viewCustomer.contactPerson}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Contact Number</div>
+                      <div className="font-semibold text-base">{viewCustomer.contactNumber}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Email</div>
+                      <div className="font-semibold text-base">{viewCustomer.email}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Credit Limit</div>
+                      <div className="font-semibold text-base">LKR {((viewCustomer as any).creditLimit || 0).toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Credit Period</div>
+                      <div className="font-semibold text-base">{(viewCustomer as any).creditPeriod || 30} days</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Tax Inclusive</div>
+                      <div className="font-semibold text-base">
+                        {(viewCustomer as any).isTaxInclusive ? "Yes" : "No"}
+                      </div>
+                    </div>
+                    {(viewCustomer as any).isTaxInclusive && (
+                      <div>
+                        <div className="text-xs text-muted-foreground">Tax Number</div>
+                        <div className="font-semibold text-base">{(viewCustomer as any).taxNumber || "N/A"}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Section: Embedded Google Maps */}
+                  <div className="md:col-span-1 flex flex-col justify-start mt-2">
+                    <div className="text-xs text-muted-foreground mb-2 font-medium">Customer Location</div>
+                    {viewCustomer.latitude && viewCustomer.longitude ? (
+                      <div className="rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm bg-white dark:bg-zinc-900">
+                        <iframe
+                          title="Customer Location Map"
+                          src={`https://maps.google.com/maps?q=${viewCustomer.latitude},${viewCustomer.longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                          width="100%"
+                          height="280"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                        ></iframe>
+                        <div className="p-2 bg-zinc-50 dark:bg-zinc-800 text-[10px] text-muted-foreground flex justify-between items-center">
+                          <span>
+                            {viewCustomer.latitude}, {viewCustomer.longitude}
+                          </span>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${viewCustomer.latitude},${viewCustomer.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline font-semibold"
+                          >
+                            Open in Google Maps
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-[280px] rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center p-4 text-center bg-zinc-50 dark:bg-zinc-800/50">
+                        <MapPin className="h-8 w-8 text-zinc-400 mb-2" />
+                        <span className="text-xs font-medium text-zinc-500">No Location Coordinates Set</span>
+                        <span className="text-[10px] text-zinc-400 mt-1">Edit customer info to add latitude and longitude.</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1609,6 +1696,26 @@ export default function CustomersPage() {
                 {formErrors.address && (
                   <div className="text-xs text-red-600 mt-1">{formErrors.address}</div>
                 )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="editLatitude">Latitude</Label>
+                  <Input
+                    id="editLatitude"
+                    placeholder="e.g. 6.9271"
+                    value={formData.latitude}
+                    onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editLongitude">Longitude</Label>
+                  <Input
+                    id="editLongitude"
+                    placeholder="e.g. 79.8612"
+                    value={formData.longitude}
+                    onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 {/* <div>
