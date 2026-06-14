@@ -234,3 +234,122 @@ body {
     to   { height: var(--radix-collapsible-content-height); opacity: 1; }
   }
 }
+
+/* === Code Aqua ERP — Action Button Aesthetics === */
+button.border:has(svg.lucide-eye),
+button:not(.bg-primary):not(.bg-destructive):has(svg.lucide-eye) {
+  border-color: rgba(37, 99, 235, 0.15) !important;
+  color: #2563eb !important;
+  background-color: rgba(239, 246, 255, 0.45) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+button.border:has(svg.lucide-eye):hover,
+button:not(.bg-primary):not(.bg-destructive):has(svg.lucide-eye):hover {
+  border-color: rgba(37, 99, 235, 0.35) !important;
+  background-color: rgba(239, 246, 255, 0.9) !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+button.border:has(svg.lucide-trash-2),
+button:not(.bg-primary):not(.bg-destructive):has(svg.lucide-trash-2) {
+  border-color: rgba(220, 38, 38, 0.15) !important;
+  color: #dc2626 !important;
+  background-color: rgba(254, 242, 242, 0.45) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+button.border:has(svg.lucide-trash-2):hover,
+button:not(.bg-primary):not(.bg-destructive):has(svg.lucide-trash-2):hover {
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  background-color: rgba(254, 242, 242, 0.9) !important;
+  color: #b91c1c !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.08);
+}
+
+/* === Code Aqua ERP — Dialog Themes === */
+
+/* Left align and separate dialog headers */
+[role=dialog] [class*="DialogHeader"] {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: left !important;
+}
+
+/* Dialog Title with Teal Accent Bar */
+[role=dialog] [id*="-title"],
+[role=dialog] h2 {
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  color: #1e293b !important;
+  letter-spacing: -0.025em !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+[role=dialog] [id*="-title"]::before,
+[role=dialog] h2::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background-color: #0097a7; /* Teal */
+  border-radius: 99px;
+}
+
+/* Clean spacing and style for dialog labels */
+[role=dialog] label {
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  color: #64748b !important; /* slate-500 */
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  margin-bottom: 0.375rem !important;
+  display: block !important;
+}
+
+/* Inline Checkbox and Radio Labels Exception */
+[role=dialog] div.flex.items-center.space-x-2 label,
+[role=dialog] label:has(input[type=checkbox]) {
+  display: inline-block !important;
+  margin-bottom: 0 !important;
+  text-transform: none !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  letter-spacing: normal !important;
+}
+
+/* Style read-only text values in View dialogs to look like clean, non-editable cards */
+[role=dialog] label + p,
+[role=dialog] label + span:not([class*="sr-only"]):not([class*="badge"]):not([class*="avatar"]) {
+  background-color: #f8fafc !important; /* slate-50 */
+  border: 1px solid #e2e8f0 !important; /* slate-200 */
+  border-radius: 0.75rem !important; /* rounded-xl */
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.75rem !important;
+  min-height: 2.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  word-break: break-all !important;
+}
+
+/* Style dialog grids and horizontal lines cleanly */
+[role=dialog] hr {
+  border-color: #f1f5f9 !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 1.25rem !important;
+}
+
+[role=dialog] .grid {
+  gap: 1.25rem !important;
+}
+
+
