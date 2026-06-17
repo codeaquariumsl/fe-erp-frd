@@ -217,10 +217,10 @@ export default function CustomersPage() {
       errors.contactNumber = "Please enter a valid contact number"
     }
 
-    if (!formData.email.trim()) {
-      errors.email = "Email address is required"
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = "Please enter a valid email address"
+    if (formData.email.trim()) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        errors.email = "Please enter a valid email address"
+      }
     }
 
     if (formData.type !== "Walk-in" && formData.type !== "Walking") {
@@ -848,7 +848,7 @@ export default function CustomersPage() {
                 <div className={"grid gap-3" + (formData.type === "Walk-in" ? " grid-cols-2" : " grid-cols-3")}>
 
                   <div>
-                    <Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="email">Email Address</Label>
                     <Input
                       id="email"
                       type="email"
@@ -1048,7 +1048,7 @@ export default function CustomersPage() {
                     <Button size="sm"
                       className="w-full"
                       onClick={handleCreateCustomer}
-                      disabled={Object.keys(validationErrors).some(key => validationErrors[key]) || !formData.name.trim() || !formData.email.trim() || !formData.contactNumber.trim()}
+                      disabled={Object.keys(validationErrors).some(key => validationErrors[key]) || !formData.name.trim() || !formData.contactNumber.trim()}
                     >
                       Create Customer
                     </Button>
@@ -1578,7 +1578,7 @@ export default function CustomersPage() {
               </div>
               <div className={"grid gap-3" + (formData.type === "Walking" ? " grid-cols-2" : " grid-cols-3")}>
                 <div>
-                  <Label htmlFor="editEmail">Email Address <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="editEmail">Email Address</Label>
                   <Input
                     id="editEmail"
                     type="email"
@@ -1793,7 +1793,7 @@ export default function CustomersPage() {
                   <Button size="sm"
                     className="w-full"
                     onClick={handleEditCustomer}
-                    disabled={Object.keys(validationErrors).some(key => validationErrors[key]) || !formData.name.trim() || !formData.email.trim() || !formData.contactNumber.trim()}
+                    disabled={Object.keys(validationErrors).some(key => validationErrors[key]) || !formData.name.trim() || !formData.contactNumber.trim()}
                   >
                     Update Customer
                   </Button>

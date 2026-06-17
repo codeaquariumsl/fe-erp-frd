@@ -1174,7 +1174,7 @@ export default function PurchaseOrdersPage() {
 
         {/* View Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Purchase Order Details</DialogTitle>
             </DialogHeader>
