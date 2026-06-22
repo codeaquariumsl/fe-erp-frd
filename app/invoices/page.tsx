@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { ERPLayout } from "@/components/layouts/erp-layout"
@@ -511,218 +511,212 @@ export default function InvoicesPage() {
         const margin = 15
 
         // Helper: Right align text
-        const rightText = (text: string, y: number, x: number = pageWidth - margin) => {
-            doc.text(text, x, y, { align: "right" })
+        const rightText = (text: string, y: number, x: number = pageWidth - margin, options: any = {}) => {
+            doc.text(text, x, y, { align: "right", ...options })
         }
 
-        // 1. Header Section
-        let yPos = 20
-
-        // Logo - Code Aqua ERP
-        try {
-            // Using the logo from the public assets folder
-            // Dimensions: approx 40mm wide, 35mm high
-            doc.addImage("/assets/codeaqua_logo.png", "PNG", margin, yPos - 10, 40, 35)
-        } catch (e) {
-            console.error("Failed to add logo to PDF:", e)
-            // Fallback to stylized text if logo fails to load
-            doc.setTextColor(76, 175, 80)
-            doc.setFontSize(22)
-            doc.setFont("helvetica", "bold")
-            doc.text("Code Aqua", margin, yPos + 10)
-        }
-
-        // Company Details (Positioned next to the logo)
-        doc.setTextColor(60, 60, 60)
-        doc.setFontSize(14)
-        doc.setFont("helvetica", "bold")
-        const companyX = margin + 50
-        doc.text("Code Aqua ERP Solutions", companyX, yPos)
-
-        yPos += 5
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "normal")
-        doc.text("4th Floor, Forbes & Walkers Building,", companyX, yPos)
-        yPos += 4
-        doc.text("38/46 Nawam Mawatha,", companyX, yPos)
-        yPos += 4
-        doc.text("Colombo 00200", companyX, yPos)
-        yPos += 4
-        doc.text("VAT, 102861841 7000", companyX, yPos)
-        yPos += 4
-        doc.text("072 796 6966", companyX, yPos)
-        // yPos += 4
-
-        // Invoice Title (Right)
-        doc.setFontSize(18)
-        doc.setFont("helvetica", "bold")
-        doc.setTextColor(80, 80, 80)
-        const title = invoice.isTaxInvoice ? "Tax Invoice" : "Invoice"
-        rightText(title, 25)
-
-        yPos += 15
-
-        // 2. Bill To & Ship To
-        const boxTop = yPos
-
-        // Bill To
-        doc.setFillColor(240, 245, 250)
-        doc.rect(margin, yPos, 85, 6, 'F')
-
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.setTextColor(100, 100, 100)
-        doc.text("BILL TO", margin + 2, yPos + 4)
-
-        yPos += 10
-        doc.setTextColor(0, 0, 0)
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(9)
-
-        if (invoice.customer) {
-            doc.text(invoice.customer.name, margin, yPos)
-            yPos += 5
-            const addressLines = doc.splitTextToSize(invoice.customer.address || "", 80)
-            doc.text(addressLines, margin, yPos)
-            yPos += (addressLines.length * 4)
-            if (invoice.customer.taxNumber) {
-                doc.setFontSize(8)
-                doc.setFont("helvetica", "normal")
-                doc.text("Tax Number: " + invoice.customer.taxNumber, margin, yPos)
-                yPos += 4
-            }
-            if (invoice.customer.contactNumber) {
-                doc.setFontSize(8)
-                doc.setFont("helvetica", "normal")
-                doc.text(invoice.customer.contactNumber, margin, yPos)
-            }
-        }
-
-        // Ship To
-        let yPosRight = boxTop
-        const rightColX = pageWidth / 2 + 10
-
-        doc.setFillColor(240, 245, 250)
-        doc.rect(rightColX, yPosRight, 85, 6, 'F')
-
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.setTextColor(100, 100, 100)
-        doc.text("SHIP TO", rightColX + 2, yPosRight + 4)
-
-        yPosRight += 10
-        doc.setTextColor(0, 0, 0)
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(9)
-
-        const shipName = invoice.DeliveryOrder?.customerName || invoice.customer?.name || ""
-        const shipAddress = invoice.DeliveryOrder?.shippingAddress || invoice.customer?.address || ""
-        const shipContact = invoice.DeliveryOrder?.contactNumber || invoice.customer?.contactNumber || ""
-
-        if (shipName) {
-            doc.text(shipName, rightColX, yPosRight)
-            yPosRight += 5
-            const shipAddressLines = doc.splitTextToSize(shipAddress, 80)
-            doc.text(shipAddressLines, rightColX, yPosRight)
-            yPosRight += (shipAddressLines.length * 4) + 1
-            if (shipContact) {
-                doc.text(shipContact, rightColX, yPosRight)
-            }
-        }
-
-        yPos = Math.max(yPos, yPosRight) + 10
-
-        // 3. Info Strip
-        doc.setFillColor(235, 240, 245)
-        doc.rect(margin, yPos, pageWidth - (margin * 2), 12, 'F')
-
-        const infoHeaders = ["INVOICE NO.", "DATE", "TOTAL DUE", "DUE DATE", "TERMS", "PO NUMBER"]
-        const startX = margin + 5
-        const gap = (pageWidth - (margin * 2)) / 6
-
-        doc.setFontSize(7)
-        doc.setFont("helvetica", "bold")
-        doc.setTextColor(100, 100, 100)
-
-        infoHeaders.forEach((h, i) => {
-            doc.text(h, startX + (i * gap), yPos + 4)
-        })
-
-        // Values
-        const totalAmount = invoice.totalAmount || 0
-        const infoValues = [
-            invoice.invoiceNumber,
-            format(new Date(invoice.invoiceDate), "dd/MM/yyyy"),
-            `LKR ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            format(addDays(new Date(invoice.DeliveryOrder?.deliveryDate || invoice.invoiceDate), Number(invoice.customer?.creditPeriod || 0)), "dd/MM/yyyy"),
-            "Net " + (invoice.customer?.creditPeriod || "0"),
-            invoice.SalesOrder?.poNumber || "-"
-        ]
-
-        doc.setFont("helvetica", "normal")
-        doc.setTextColor(0, 0, 0)
-        infoValues.forEach((v, i) => {
-            if (v) doc.text(v, startX + (i * gap), yPos + 9)
-        })
-
-        yPos += 18
-
-        // Sales Rep
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.text("SALES REP", margin, yPos)
-        yPos += 5
-        doc.setFont("helvetica", "normal")
-        doc.text(invoice.SalesPerson?.fullName || "-", margin, yPos)
-
-        yPos += 10
-
-        // 4. Items Table
-        doc.setFillColor(235, 240, 245)
-        doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F')
-
-        const cols = [
-            { label: "CODE", x: margin + 5, w: 25, align: "left" },
-            { label: "DESCRIPTION", x: margin + 40, w: 80, align: "left" },
-            { label: "QTY", x: pageWidth - margin - 80, w: 15, align: "right" },
-            { label: "RATE", x: pageWidth - margin - 45, w: 20, align: "right" },
-            { label: "AMOUNT", x: pageWidth - margin - 5, w: 25, align: "right" },
-        ]
-
-        doc.setFontSize(7)
-        doc.setFont("helvetica", "bold")
-        doc.setTextColor(100, 100, 100)
-
-        cols.forEach(c => {
-            doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" })
-        })
-
-        yPos += 12
-        doc.setTextColor(0, 0, 0)
-        doc.setFont("helvetica", "normal")
+        // Calculations
+        const totalAmount = invoice.totalAmount || ((invoice.subTotal ?? 0) + (invoice.isTaxInvoice ? (invoice.taxAmount || 0) : 0))
+        const paidAmount = invoice.paidAmount || 0
+        const setoffAmount = invoice.setoffAmount || 0
+        const dueAmount = totalAmount - paidAmount - setoffAmount
         let nonTaxSubTotal = 0;
 
         invoice.items.forEach((item) => {
-            const itemCode = item.code || item.item?.sku || "-"
-            const itemName = item.item?.name || "Unknown Item"
-
-            const qty = item.qty
-            const price = invoice.isTaxInvoice ? item.excludingTaxAmount : item.discountedAmount
             const amount = invoice.isTaxInvoice ? Number(item.total) : (Number(item.discountedAmount) * Number(item.qty))
             if (!invoice.isTaxInvoice) {
                 nonTaxSubTotal += amount
             }
+        });
+        const subtotal = invoice.isTaxInvoice ? Number(invoice.subTotal) : nonTaxSubTotal
 
-            doc.text(itemCode, cols[0].x, yPos)
+        let yPos = 20
 
-            const itemLines = doc.splitTextToSize(itemName, cols[1].w)
+        // 1. Header Section
+        // Logo
+        try {
+            // Using the logo from the public assets folder
+            doc.setFillColor(253, 203, 88) // Yellowish circle
+            doc.circle(margin + 15, yPos + 5, 15, "F")
+            doc.addImage("/assets/fruit_easy_logo.png", "PNG", margin, yPos - 10, 30, 30)
+
+        } catch (e) {
+            console.error("Failed to add logo to PDF:", e)
+            doc.setFillColor(253, 203, 88) // Yellowish circle
+            doc.circle(margin + 15, yPos + 5, 15, "F")
+            doc.setTextColor(255, 255, 255)
+            doc.setFontSize(16)
+            doc.setFont("helvetica", "bold")
+            doc.text("fe", margin + 10, yPos + 2)
+            doc.setFontSize(8)
+            doc.text("FRUIT", margin + 8, yPos + 6)
+            doc.text("eazy", margin + 9, yPos + 10)
+        }
+
+        // Right Header
+        const title = invoice.isTaxInvoice ? "TAX Invoice" : "Invoice"
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(26)
+        doc.setTextColor(0, 0, 0)
+        rightText(title, yPos)
+
+        yPos += 8
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "bold")
+        rightText(`# ${invoice.invoiceNumber || "-"}`, yPos)
+
+        yPos += 12
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(100, 100, 100)
+        rightText("Balance Due", yPos)
+
+        yPos += 6
+        doc.setFontSize(14)
+        doc.setFont("helvetica", "bold")
+        doc.setTextColor(0, 0, 0)
+        rightText(`LKR${dueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos)
+
+        // Company Details (Left)
+        yPos = 50
+        doc.setTextColor(0, 0, 0)
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "bold")
+        doc.text("Fruit Eazy", margin, yPos)
+
+        yPos += 5
+        doc.setFontSize(9)
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(80, 80, 80)
+        doc.text("No. 358,", margin, yPos)
+        yPos += 4
+        doc.text("Jana Jaya City Mall,", margin, yPos)
+        yPos += 4
+        doc.text("Rajagiriya Western Province", margin, yPos)
+        yPos += 4
+        doc.text("SriLanka", margin, yPos)
+        yPos += 4
+        doc.text("0744118869", margin, yPos)
+        yPos += 4
+        doc.text("office@ceyloncarb.com", margin, yPos)
+
+        yPos += 15
+
+        // 2. Bill To & Info Section
+        const billToY = yPos
+
+        // Bill To
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "bold")
+        doc.setTextColor(0, 0, 0)
+        doc.text("Bill To", margin, yPos)
+
+        let leftY = yPos + 5
+        if (invoice.customer) {
+            doc.setFontSize(9)
+            doc.setFont("helvetica", "bold")
+            doc.text(invoice.customer.name, margin, leftY)
+            leftY += 5
+
+            doc.setFont("helvetica", "normal")
+            const addressLines = doc.splitTextToSize(invoice.customer.address || "", 80)
+            doc.text(addressLines, margin, leftY)
+            leftY += (addressLines.length * 5)
+
+            if (invoice.customer.contactNumber) {
+                doc.text(invoice.customer.contactNumber, margin, leftY)
+            }
+        }
+
+        // Info Details (Right)
+        let rightY = billToY
+        const labelX = pageWidth - margin - 40
+        const valueX = pageWidth - margin
+
+        doc.setFontSize(9)
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(80, 80, 80)
+
+        const invoiceDate = format(new Date(invoice.invoiceDate), "dd MMM yyyy")
+        const terms = invoice.customer?.creditPeriod ? `${invoice.customer.creditPeriod} Days` : "Custom"
+        const dueDate = format(addDays(new Date(invoice.DeliveryOrder?.deliveryDate || invoice.invoiceDate), Number(invoice.customer?.creditPeriod || 0)), "dd MMM yyyy")
+        const supplierTin = "108199873 - 7000"
+
+        doc.text("Invoice Date :", labelX, rightY, { align: "right" })
+        rightText(invoiceDate, rightY, valueX)
+
+        rightY += 6
+        doc.text("Terms :", labelX, rightY, { align: "right" })
+        rightText(terms, rightY, valueX)
+
+        rightY += 6
+        doc.text("Due Date :", labelX, rightY, { align: "right" })
+        rightText(dueDate, rightY, valueX)
+
+        rightY += 6
+        doc.text("Supplier TIN :", labelX, rightY, { align: "right" })
+        rightText(supplierTin, rightY, valueX)
+
+        yPos = Math.max(leftY, rightY) + 15
+
+        // 3. Table Header
+        doc.setFillColor(60, 60, 60)
+        doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F')
+
+        const cols = [
+            { label: "#", x: margin + 5, align: "center" },
+            { label: "Item & Description", x: margin + 15, align: "left" },
+            { label: "Qty", x: pageWidth - margin - 50, align: "right" },
+            { label: "Rate", x: pageWidth - margin - 25, align: "right" },
+            { label: "Amount", x: pageWidth - margin - 5, align: "right" },
+        ]
+
+        doc.setFontSize(9)
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(255, 255, 255)
+
+        cols.forEach(c => {
+            doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" | "center" })
+        })
+
+        yPos += 12
+        doc.setTextColor(0, 0, 0)
+
+        // 4. Table Rows
+        invoice.items.forEach((item, index) => {
+            const itemName = item.item?.name || "Unknown Item"
+            const qty = Number(item.qty || 0)
+            const price = invoice.isTaxInvoice ? item.excludingTaxAmount : item.discountedAmount
+            const amount = invoice.isTaxInvoice ? Number(item.total) : (Number(item.discountedAmount) * Number(item.qty))
+
+            doc.setFontSize(9)
+            doc.setFont("helvetica", "normal")
+
+            // Index
+            doc.text((index + 1).toString(), cols[0].x, yPos, { align: "center" })
+
+            // Item description
+            const itemLines = doc.splitTextToSize(itemName, 90)
             doc.text(itemLines[0], cols[1].x, yPos)
 
-            doc.text(qty.toString(), cols[2].x, yPos, { align: "right" })
+            // Qty
+            doc.text(qty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cols[2].x, yPos, { align: "right" })
+            doc.setFontSize(7)
+            doc.setTextColor(100, 100, 100)
+            doc.text("pcs", cols[2].x, yPos + 4, { align: "right" }) // Under Qty
+
+            // Rate and Amount
+            doc.setFontSize(9)
+            doc.setTextColor(0, 0, 0)
             doc.text(Number(price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cols[3].x, yPos, { align: "right" })
             doc.text(Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cols[4].x, yPos, { align: "right" })
 
             yPos += 8
+
+            // Light gray line
+            doc.setDrawColor(220, 220, 220)
+            doc.line(margin, yPos, pageWidth - margin, yPos)
+            yPos += 6
 
             if (yPos > pageHeight - 60) {
                 doc.addPage()
@@ -730,65 +724,70 @@ export default function InvoicesPage() {
             }
         })
 
-        // 5. Summary Footer
+        // 5. Totals Section
         yPos += 5
-        const summaryX = pageWidth - margin - 80
-        const valueX = pageWidth - margin - 5
+        const totalLabelX = pageWidth - margin - 40
+        const totalValueX = pageWidth - margin
 
-        // Bank Details (Left side)
-        const bankY = yPos
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.setTextColor(100, 100, 100)
-        doc.text("BANK DETAILS", margin, bankY)
+        doc.setFontSize(9)
         doc.setFont("helvetica", "normal")
         doc.setTextColor(0, 0, 0)
-        doc.text("CODE AQUA lanka PVT LTD", margin, bankY + 4)
-        doc.text("Acc No. 111000133104", margin, bankY + 8)
-        doc.text("National Development Bank PLC ( NDB )", margin, bankY + 12)
-        doc.text("Branch - Main street, Pettah.", margin, bankY + 16)
 
-        doc.setFontSize(8)
-        const subtotal = invoice.isTaxInvoice ? Number(invoice.subTotal) : nonTaxSubTotal
-        doc.text("SUBTOTAL", summaryX, yPos)
-        rightText(subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), yPos, valueX)
-        yPos += 6
+        // Sub Total
+        doc.text("Sub Total", totalLabelX, yPos, { align: "right" })
+        rightText(subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), yPos, totalValueX)
+        yPos += 8
 
-        const taxVal = invoice.taxAmount || 0
-        if (invoice.isTaxInvoice && taxVal > 0) {
-            doc.text("TAX", summaryX, yPos)
-            rightText(taxVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), yPos, valueX)
-            yPos += 6
-        }
+        // Total
+        doc.setFont("helvetica", "bold")
+        doc.text("Total", totalLabelX, yPos, { align: "right" })
+        rightText(`LKR${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, totalValueX)
+        yPos += 5
 
-        yPos += 2
+        // Balance Due Box
+        doc.setFillColor(240, 240, 240)
+        doc.rect(pageWidth - margin - 90, yPos, 90, 10, 'F')
+
+        yPos += 6.5
+        doc.setFontSize(10)
+        doc.text("Balance Due", totalLabelX, yPos, { align: "right" })
+        rightText(`LKR${dueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, totalValueX)
+
+        yPos += 15
+
+        // 6. Notes & Bank Details
+        const bottomSectionY = yPos
         doc.setFontSize(9)
         doc.setFont("helvetica", "bold")
-        doc.text("TOTAL", summaryX, yPos)
-        const finalTotal = invoice.totalAmount || ((invoice.subTotal ?? 0) + (invoice.isTaxInvoice ? taxVal : 0))
-        rightText(`LKR ${finalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, valueX)
+        doc.setTextColor(0, 0, 0)
+        doc.text("Notes", margin, bottomSectionY)
 
-        yPos += 8
-        const paidAmount = invoice.paidAmount || 0
-        const setoffAmount = invoice.setoffAmount || 0
-        const dueAmount = finalTotal - paidAmount - setoffAmount
-        doc.text("PAID AMOUNT", summaryX, yPos)
-        doc.setFontSize(11)
-        rightText(`LKR ${paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, valueX)
+        let notesY = bottomSectionY + 6
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(80, 80, 80)
+        doc.text("- Goods must be checked at the time of delivery.", margin, notesY)
+        notesY += 6
+        doc.text("- Cash payments need to be handed over to the representative by signing the invoice under the \"PAID\" rubber seal.", margin, notesY)
 
-        if (setoffAmount > 0) {
-            yPos += 8
-            doc.text("SET-OFF AMOUNT", summaryX, yPos)
-            doc.setFontSize(11)
-            rightText(`LKR ${setoffAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, valueX)
-        }
+        notesY += 8
+        doc.setFont("helvetica", "bold")
+        doc.setTextColor(0, 0, 0)
+        doc.text("Bank Details", margin, notesY)
 
-        if (dueAmount > 0) {
-            yPos += 8
-            doc.text("BALANCE DUE", summaryX, yPos)
-            doc.setFontSize(11)
-            rightText(`LKR ${dueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, valueX)
-        }
+        notesY += 6
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(80, 80, 80)
+        doc.text("Account Name : Ceylon Carb Private Limited", margin, notesY)
+        notesY += 5
+        doc.text("Bank : National Development Bank (NDB)", margin, notesY)
+        notesY += 5
+        doc.text("Bank Branch : Kohuwela", margin, notesY)
+        notesY += 5
+        doc.text("Account Number : 111000305711", margin, notesY)
+
+        // Footer line
+        doc.setDrawColor(220, 220, 220)
+        doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15)
 
         doc.save(`Invoice-${invoice.invoiceNumber}.pdf`)
         toast({
