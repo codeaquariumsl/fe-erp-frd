@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as XLSX from "xlsx"
 
@@ -78,6 +78,13 @@ export default function SalesPage() {
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([])   // current page rows
   const [totalOrders, setTotalOrders] = useState(0)                   // server total count
   const [totalPages, setTotalPages] = useState(1)
+  const [summaryData, setSummaryData] = useState({
+    totalAmount: 0,
+    totalApprovedCount: 0,
+    totalApprovedAmount: 0,
+    totalPendingCount: 0,
+    totalPendingAmount: 0,
+  })
   const [customers, setCustomers] = useState<CustomerWithRoutes[]>([])
   const [availableItems, setAvailableItems] = useState<any[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
@@ -98,6 +105,7 @@ export default function SalesPage() {
 
   // Dialog state
   const [openDialog, setOpenDialog] = useState(false)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [itemPopoverOpen, setItemPopoverOpen] = useState<number | null>(null)
   const getToday = () => {
     const d = new Date()
@@ -144,6 +152,15 @@ export default function SalesPage() {
       setSalesOrders(result.data)
       setTotalOrders(result.pagination.total)
       setTotalPages(result.pagination.totalPages)
+      if (result.summary) {
+        setSummaryData({
+          totalAmount: result.summary.totalAmount || 0,
+          totalApprovedCount: result.summary.totalApprovedCount || 0,
+          totalApprovedAmount: result.summary.totalApprovedAmount || 0,
+          totalPendingCount: result.summary.totalPendingCount || 0,
+          totalPendingAmount: result.summary.totalPendingAmount || 0,
+        })
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load orders")
     } finally {
@@ -1742,23 +1759,46 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalOrders}</div>
-              <p className="text-xs text-muted-foreground">All</p>
+              <p className="text-xs text-muted-foreground">
+                LKR {summaryData.totalAmount.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="h-24 flex flex-col justify-center">
+          {/* <Card className="h-24 flex flex-col justify-center">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                LKR {salesOrders.reduce((sum, order) => sum + Number(order.totalAmount ?? 0), 0).toLocaleString('en-US', {
+                LKR {summaryData.totalAmount.toLocaleString('en-US', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
                 })}
               </div>
-              <p className="text-xs text-muted-foreground">{calculateMonthOverMonthGrowth()}</p>
+              <p className="text-xs text-muted-foreground">Overall</p>
+            </CardContent>
+          </Card> */}
+
+          <Card className="h-24 flex flex-col justify-center">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Approved Orders</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {summaryData.totalApprovedCount}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                LKR {summaryData.totalApprovedAmount.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </p>
             </CardContent>
           </Card>
 
@@ -1769,22 +1809,27 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {salesOrders.filter((order) => order.status === "Pending").length}
+                {summaryData.totalPendingCount}
               </div>
-              <p className="text-xs text-muted-foreground">Need attention</p>
+              <p className="text-xs text-muted-foreground">
+                LKR {summaryData.totalPendingAmount.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </p>
             </CardContent>
           </Card>
 
           <Card className="h-24 flex flex-col justify-center">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Delivered Orders</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {salesOrders.filter((order) => order.deliveryOrderStatus === "Delivered").length}
               </div>
-              <p className="text-xs text-muted-foreground">Successfully completed</p>
+              <p className="text-xs text-muted-foreground">Current page completed</p>
             </CardContent>
           </Card>
         </div>

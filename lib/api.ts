@@ -367,6 +367,7 @@ export interface PaginationMeta {
 export interface PaginatedResponse<T> {
   data: T[]
   pagination: PaginationMeta
+  summary?: any
 }
 
 export interface ItemPrice {
@@ -1327,6 +1328,7 @@ function transformSalesOrder(backendOrder: any): SalesOrder {
     createdAt: backendOrder.createdAt,
     createdUserName: backendOrder.createdUserName,
     updatedAt: backendOrder.updatedAt,
+    summary: backendOrder.summary,
   }
 }
 
@@ -2092,12 +2094,12 @@ export const deliveryOrdersApi = {
       });
     }
     const res = await apiRequest<any>(`/delivery-orders?${query.toString()}`);
-    
+
     // Support both old and new response formats
     if (res && res.pagination) {
       return res;
     }
-    
+
     // Fallback for old format (if any)
     const data = Array.isArray(res) ? res : (res?.data || []);
     return {
@@ -2512,6 +2514,7 @@ export interface SalesOrder {
   updatedAt?: string
   SalesPerson?: User
   Customer?: any
+  summary?: any
 }
 
 export const salesOrdersApi = {
@@ -2539,12 +2542,13 @@ export const salesOrdersApi = {
       qp.append("deliveryOrderStatus", params.deliveryOrderStatus)
 
     const url = `/sales-orders${qp.toString() ? `?${qp.toString()}` : ""}`
-    const response = await apiRequest<{ data: any[]; pagination: PaginationMeta }>(url)
+    const response = await apiRequest<{ data: any[]; pagination: PaginationMeta, summary: any }>(url)
     return {
       data: (response.data ?? []).map(transformSalesOrder),
       pagination: response.pagination ?? {
         page: 1, limit: 0, total: 0, totalPages: 1, hasNextPage: false, hasPrevPage: false
       },
+      summary: response.summary
     }
   },
   async getById(id: number | string): Promise<SalesOrder> {
@@ -7528,9 +7532,9 @@ export const billEntriesApi = {
     const query = new URLSearchParams()
     if (params?.page) query.append('page', params.page.toString())
     if (params?.limit) query.append('limit', params.limit.toString())
-    
-    const endpoint = supplierId 
-      ? `/bill-entries/supplier/${supplierId}/outstanding?${query.toString()}` 
+
+    const endpoint = supplierId
+      ? `/bill-entries/supplier/${supplierId}/outstanding?${query.toString()}`
       : `/bill-entries/outstanding?${query.toString()}`
     const response = await apiRequest<any>(endpoint)
     return response?.data || response || []
