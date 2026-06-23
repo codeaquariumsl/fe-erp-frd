@@ -62,6 +62,7 @@ interface CustomerFormData {
   address: string
   contactPerson: string
   contactNumber: string
+  contactNumber2: string
   email: string
   creditLimit: number
   creditPeriod: number
@@ -72,6 +73,7 @@ interface CustomerFormData {
   taxNumber: string
   latitude: string
   longitude: string
+  paymentMethod: string
 }
 
 export default function CustomersPage() {
@@ -95,6 +97,7 @@ export default function CustomersPage() {
     address: "",
     contactPerson: "",
     contactNumber: "",
+    contactNumber2: "",
     email: "",
     creditLimit: 0,
     creditPeriod: 30,
@@ -105,6 +108,7 @@ export default function CustomersPage() {
     taxNumber: "",
     latitude: "",
     longitude: "",
+    paymentMethod: "Cash on delivery",
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
@@ -184,7 +188,9 @@ export default function CustomersPage() {
           email: parentCustomer.email,
           contactPerson: parentCustomer.contactPerson,
           contactNumber: parentCustomer.contactNumber,
+          contactNumber2: (parentCustomer as any).contactNumber2 || "",
           creditLimit: (parentCustomer as any).creditLimit || 0,
+          paymentMethod: "Cash on delivery",
           creditPeriod: (parentCustomer as any).creditPeriod || 30,
         }))
       }
@@ -193,8 +199,10 @@ export default function CustomersPage() {
         ...formData,
         contactPerson: "",
         contactNumber: "",
+        contactNumber2: "",
         email: "",
         creditLimit: 0,
+        paymentMethod: "Cash on delivery",
         creditPeriod: 30,
       })
     }
@@ -392,6 +400,7 @@ export default function CustomersPage() {
         name: formData.name,
         email: formData.email,
         contactNumber: formData.contactNumber,
+        contactNumber2: formData.contactNumber2,
         address: formData.address,
         isTaxInclusive: formData.isTaxInclusive,
         taxNumber: formData.taxNumber || "",
@@ -446,8 +455,10 @@ export default function CustomersPage() {
       address: customer.address,
       contactPerson: customer.contactPerson,
       contactNumber: customer.contactNumber,
+      contactNumber2: (customer as any).contactNumber2 || "",
       email: customer.email,
       creditLimit: (customer as any).creditLimit || 0,
+      paymentMethod: (customer as any).paymentMethod || "Cash on delivery",
       creditPeriod: (customer as any).creditPeriod || 30,
       discountRate: (customer as any).discountRate || 0,
       status: customer.status,
@@ -507,8 +518,10 @@ export default function CustomersPage() {
       address: "",
       contactPerson: "",
       contactNumber: "",
+      contactNumber2: "",
       email: "",
       creditLimit: 0,
+      paymentMethod: "Cash on delivery",
       creditPeriod: 30,
       discountRate: 0,
       status: "active",
@@ -530,7 +543,8 @@ export default function CustomersPage() {
         customer.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.contactNumber?.includes(searchTerm)
+        customer.contactNumber?.includes(searchTerm) ||
+        (customer as any).contactNumber2?.includes(searchTerm)
 
       // Type filter
       const matchesType = typeFilter === "all" || customer.type === typeFilter
@@ -890,6 +904,15 @@ export default function CustomersPage() {
                       <div className="text-xs text-red-600 mt-1">{formErrors.contactNumber || validationErrors.contactNumber}</div>
                     )}
                   </div>
+                  <div>
+                    <Label htmlFor="contactNumber2">Contact Number 2</Label>
+                    <Input
+                      id="contactNumber2"
+                      placeholder="+94 XX XXX XXXX"
+                      value={formData.contactNumber2}
+                      onChange={(e) => handleFormDataChange('contactNumber2', e.target.value)}
+                    />
+                  </div>
 
                 </div>
                 {formData.type !== "Walk-in" && (
@@ -932,6 +955,28 @@ export default function CustomersPage() {
                       />
                       {formErrors.creditLimit && (
                         <div className="text-xs text-red-600 mt-1">{formErrors.creditLimit}</div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="paymentMethod">Payment Method <span className="text-red-500">*</span></Label>
+                      <Select 
+                        value={formData.paymentMethod} 
+                        onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+                      >
+                        <SelectTrigger className={formErrors.paymentMethod ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Select Payment Method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Cash on delivery">Cash on delivery</SelectItem>
+                          <SelectItem value="Bill to bill">Bill to bill</SelectItem>
+                          <SelectItem value="One month credit">One month credit</SelectItem>
+                          <SelectItem value="14 days credit">14 days credit</SelectItem>
+                          <SelectItem value="7 days credit">7 days credit</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {formErrors.paymentMethod && (
+                        <div className="text-xs text-red-600 mt-1">{formErrors.paymentMethod}</div>
                       )}
                     </div>
                     <div>
@@ -1437,6 +1482,10 @@ export default function CustomersPage() {
                       <div className="font-semibold text-base">{viewCustomer.contactNumber}</div>
                     </div>
                     <div>
+                      <div className="text-xs text-muted-foreground">Contact Number 2</div>
+                      <div className="font-semibold text-base">{(viewCustomer as any).contactNumber2 || "N/A"}</div>
+                    </div>
+                    <div>
                       <div className="text-xs text-muted-foreground">Email</div>
                       <div className="font-semibold text-base">{viewCustomer.email}</div>
                     </div>
@@ -1447,6 +1496,10 @@ export default function CustomersPage() {
                     <div>
                       <div className="text-xs text-muted-foreground">Credit Period</div>
                       <div className="font-semibold text-base">{(viewCustomer as any).creditPeriod || 30} days</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Payment Method</div>
+                      <div className="font-semibold text-base">{(viewCustomer as any).paymentMethod || "Cash on delivery"}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Tax Inclusive</div>
@@ -1619,6 +1672,15 @@ export default function CustomersPage() {
                     <div className="text-xs text-red-600 mt-1">{formErrors.contactNumber || validationErrors.contactNumber}</div>
                   )}
                 </div>
+                <div>
+                  <Label htmlFor="editContactNumber2">Contact Number 2</Label>
+                  <Input
+                    id="editContactNumber2"
+                    placeholder="+94 XX XXX XXXX"
+                    value={formData.contactNumber2}
+                    onChange={(e) => handleFormDataChange('contactNumber2', e.target.value)}
+                  />
+                </div>
 
 
 
@@ -1663,6 +1725,28 @@ export default function CustomersPage() {
                     />
                     {formErrors.creditLimit && (
                       <div className="text-xs text-red-600 mt-1">{formErrors.creditLimit}</div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-paymentMethod">Payment Method <span className="text-red-500">*</span></Label>
+                    <Select 
+                      value={formData.paymentMethod} 
+                      onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+                    >
+                      <SelectTrigger className={formErrors.paymentMethod ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select Payment Method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cash on delivery">Cash on delivery</SelectItem>
+                        <SelectItem value="Bill to bill">Bill to bill</SelectItem>
+                        <SelectItem value="One month credit">One month credit</SelectItem>
+                        <SelectItem value="14 days credit">14 days credit</SelectItem>
+                        <SelectItem value="7 days credit">7 days credit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formErrors.paymentMethod && (
+                      <div className="text-xs text-red-600 mt-1">{formErrors.paymentMethod}</div>
                     )}
                   </div>
                   <div>

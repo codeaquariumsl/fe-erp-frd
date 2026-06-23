@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -39,6 +39,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 import { format } from "date-fns"
 import { ERPLayout } from "@/components/layouts/erp-layout"
 import Loading from "./loading"
@@ -313,231 +314,179 @@ export default function PurchaseOrdersPage() {
     const pageWidth = doc.internal.pageSize.width
     const pageHeight = doc.internal.pageSize.height
 
-    // Colors for modern design
-    const primaryColor: [number, number, number] = [37, 99, 235] // Blue
-    const grayColor: [number, number, number] = [156, 163, 175] // Gray
-    const lightGrayColor: [number, number, number] = [243, 244, 246] // Light gray
-    const successColor: [number, number, number] = [34, 197, 94] // Green
-
-    // Header Section
-    doc.setFillColor(...primaryColor)
-    doc.rect(0, 0, pageWidth, 30, 'F')
-
-    // Company Name
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(20)
+    // Add Logo Text (Instead of image)
+    doc.setFontSize(24)
     doc.setFont('helvetica', 'bold')
-    doc.text('CODE AQUA ERP (PVT) LTD', 20, 20)
-
-    // Document title
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Purchase Order', pageWidth - 20, 20, { align: 'right' })
-
-    // Reset text color
-    doc.setTextColor(0, 0, 0)
-
-    // Purchase Order Information Section
-    let yPos = 50
-
-    // PO Details Box
-    doc.setFillColor(...lightGrayColor)
-    doc.rect(20, yPos - 5, pageWidth - 40, 40, 'F')
-    doc.setDrawColor(...grayColor)
-    doc.rect(20, yPos - 5, pageWidth - 40, 40, 'S')
-
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text('PURCHASE ORDER DETAILS', 25, yPos + 5)
-
-    // Two column layout for PO details
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-
-    // Left column
-    doc.setFont('helvetica', 'bold')
-    doc.text('PO Number:', 25, yPos + 15)
-    doc.text('Order Date:', 25, yPos + 22)
-    doc.text('Supplier:', 25, yPos + 29)
-
-    doc.setFont('helvetica', 'normal')
-    doc.text(order.orderNumber || '-', 70, yPos + 15)
-    doc.text(format(new Date(order.orderDate), 'dd/MM/yyyy'), 70, yPos + 22)
-    doc.text(order.supplier?.name || '-', 70, yPos + 29)
-
-    // Right column
-    const rightColX = pageWidth / 2 + 10
-    doc.setFont('helvetica', 'bold')
-    doc.text('Delivery Date:', rightColX, yPos + 15)
-    doc.text('Status:', rightColX, yPos + 22)
-    // doc.text('Total Amount:', rightColX, yPos + 29)
-
-    doc.setFont('helvetica', 'normal')
-    doc.text(order.deliveryDate ? format(new Date(order.deliveryDate), 'dd/MM/yyyy') : 'TBD', rightColX + 40, yPos + 15)
-    doc.text(order.status || '-', rightColX + 40, yPos + 22)
-    // doc.text(`LKR ${order.totalAmount.toFixed(2)}`, rightColX + 40, yPos + 29)
-
-    yPos += 50
-
-    // Items Section
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text('ORDER ITEMS', 25, yPos)
-    yPos += 10
-
-    // Table header
-    const colWidths = [80, 25, 25, 35] // Item, Qty, Unit Price, Total
-    const colX = [25, 105, 130, 155]
-
-    // Header background
-    doc.setFillColor(...primaryColor)
-    doc.rect(20, yPos - 2, pageWidth - 40, 12, 'F')
-
-    // Header text
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Item Name', colX[0], yPos + 6)
-    doc.text('Qty & Unit', colX[1], yPos + 6)
-    doc.text('Unit Price', colX[2], yPos + 6)
-    doc.text('Total Price', colX[3], yPos + 6)
-
-    yPos += 12
-    doc.setTextColor(0, 0, 0)
-
-    let totalAmount = 0
-    let totalQty = 0
-
-    // Table rows
-    if (order.items && order.items.length > 0) {
-      order.items.forEach((item, index) => {
-        // Alternate row colors
-        if (index % 2 === 0) {
-          doc.setFillColor(248, 250, 252)
-          doc.rect(20, yPos - 2, pageWidth - 40, 14, 'F')
-        }
-
-        doc.setFontSize(8)
-        doc.setFont('helvetica', 'normal')
-
-        // Item name (with text wrapping)
-        const selectedItem = items.find(i => i.id === item.itemId)
-        const itemName = selectedItem ? `${selectedItem.name}` : `Item ${item.itemId}`
-        const itemNameLines = doc.splitTextToSize(itemName, colWidths[0] - 5)
-        doc.text(itemNameLines, colX[0], yPos + 5)
-
-        // Quantity with unit
-        const itemUnit = selectedItem?.unit || ''
-        const qtyText = itemUnit ? `${item.quantity || '-'} ${itemUnit}` : String(item.quantity || '-')
-        doc.text(qtyText, colX[1], yPos + 5)
-        totalQty += item.quantity || 0
-
-        // Unit Price
-        doc.text(`${order.currency || 'LKR'} ${(item.unitPrice || 0).toFixed(2)}`, colX[2], yPos + 5)
-
-        // Total for this item
-        const itemTotal = item.totalPrice || 0
-        totalAmount += itemTotal
-        doc.text(`${order.currency || 'LKR'} ${itemTotal.toFixed(2)}`, colX[3], yPos + 5)
-
-        // Calculate row height based on content
-        const maxLines = Math.max(itemNameLines.length, 1)
-        const rowHeight = Math.max(14, maxLines * 7)
-        yPos += rowHeight
-
-        // Check if we need a new page
-        if (yPos > pageHeight - 80) {
-          doc.addPage()
-          yPos = 30
-        }
-      })
-    } else {
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'italic')
-      doc.setTextColor(...grayColor)
-      doc.text('No items found', 25, yPos + 15)
-      doc.setTextColor(0, 0, 0)
-      yPos += 20
-    }
-
-    // Summary Section
-    yPos += 10
-    doc.setFillColor(...successColor)
-    doc.rect(pageWidth - 140, yPos - 5, 120, 25, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text('ORDER SUMMARY', pageWidth - 135, yPos + 5)
-
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    doc.text(`Total Items: ${order.items?.length || 0}`, pageWidth - 135, yPos + 12)
-    doc.text(`Total Quantity: ${totalQty}`, pageWidth - 135, yPos + 18)
-    doc.setFont('helvetica', 'bold')
-    doc.text(`Total Amount: ${order.currency || 'LKR'} ${totalAmount.toFixed(2)}`, pageWidth - 135, yPos + 24)
-    doc.setTextColor(0, 0, 0)
-
-    yPos += 35
-
-    // Terms and Conditions (if needed)
-    if (yPos < pageHeight - 80) {
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.text('TERMS & CONDITIONS', 25, yPos)
-      yPos += 10
-
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
-      const terms = [
-        '• All goods must be delivered as per specifications',
-        '• Payment terms: 30 days from delivery',
-        '• Quality inspection will be conducted upon receipt',
-        '• Returns accepted only for defective items within 7 days'
-      ]
-
-      terms.forEach(term => {
-        doc.text(term, 25, yPos)
-        yPos += 6
-      })
-    }
-
-    // Footer
-    const footerY = pageHeight - 30
-    doc.setDrawColor(...grayColor)
-    doc.line(20, footerY, pageWidth - 20, footerY)
+    doc.setTextColor(10, 115, 10) // Green
+    doc.text('CEYLON CARB', 15, 20)
 
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...grayColor)
-    doc.text(`Generated on: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 25, footerY + 10)
-    doc.text('Page 1', pageWidth - 25, footerY + 10, { align: 'right' })
+    doc.setTextColor(100, 100, 100)
+    doc.text('INSPIRED BY EXCELLENCE', 15, 25)
 
-    // Signature section
-    if (yPos < footerY - 50) {
-      yPos = Math.max(yPos + 20, footerY - 40)
+    // Purchase Order title
+    doc.setFontSize(24)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(0, 0, 0)
+    doc.text('PURCHASE ORDER', pageWidth - 15, 20, { align: 'right' })
 
-      // Signature boxes
-      const sigBoxWidth = 60
-      const sig1X = 30
-      const sig2X = pageWidth / 2 - 30
-      const sig3X = pageWidth - 90
+    // PO Number
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`# ${order.orderNumber}`, pageWidth - 15, 27, { align: 'right' })
 
-      doc.setTextColor(0, 0, 0)
-      doc.setDrawColor(...grayColor)
+    // Company Address
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Ceylon Carb (Private) Limited', 15, 40)
 
-      // Prepared by
-      doc.line(sig1X, yPos, sig1X + sigBoxWidth, yPos)
-      doc.setFontSize(9)
-      doc.text('Prepared By', sig1X, yPos + 8)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text('No. 358, 3rd Floor, Jana Jaya City,', 15, 45)
+    doc.text('Jinadasa Niyathapala Mawatha, Sri Jayawardenapura, Kotte.', 15, 50)
+    doc.text('+94 71 4902255', 15, 55)
+    doc.text('office@ceyloncarb.com', 15, 60)
+    doc.text('www.ceyloncarb.com', 15, 65)
 
-      // Approved by
-      doc.line(sig2X, yPos, sig2X + sigBoxWidth, yPos)
-      doc.text('Approved By', sig2X, yPos + 8)
+    // Supplier Address & Deliver To
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Supplier Address', pageWidth / 2 + 10, 40)
 
-      // Supplier Acknowledgment
-      doc.line(sig3X, yPos, sig3X + sigBoxWidth, yPos)
-      doc.text('Supplier Sign', sig3X, yPos + 8)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text(order.supplier?.name || '-', pageWidth / 2 + 10, 45)
+    doc.setFont('helvetica', 'normal')
+
+    const supplierAddressParts = (order.supplier?.address || '').split(',')
+    let currentY = 50
+    if (supplierAddressParts.length > 0 && supplierAddressParts[0] !== '') {
+      supplierAddressParts.forEach(part => {
+        doc.text(part.trim(), pageWidth / 2 + 10, currentY)
+        currentY += 5
+      })
+    } else {
+      doc.text('Address not provided', pageWidth / 2 + 10, currentY)
     }
+
+    doc.setFontSize(10)
+    doc.text('Deliver To', pageWidth / 2 + 10, 75)
+    doc.setFontSize(9)
+    doc.text('office', pageWidth / 2 + 10, 80)
+    doc.text('No. 358, 3rd Floor, Jana Jaya City,', pageWidth / 2 + 10, 85)
+    doc.text('Jinadasa Niyathapala Mawatha,', pageWidth / 2 + 10, 90)
+    doc.text('Sri Jayawardenapura, Kotte.', pageWidth / 2 + 10, 95)
+    doc.text('+94 71 4902255', pageWidth / 2 + 10, 100)
+    doc.text('office@ceyloncarb.com', pageWidth / 2 + 10, 105)
+    doc.text('www.ceyloncarb.com', pageWidth / 2 + 10, 110)
+
+    // Dates aligned right above table
+    const tableStartY = 130
+
+    doc.text('Date :', pageWidth - 50, tableStartY - 15, { align: 'right' })
+    doc.text('Delivery Date :', pageWidth - 50, tableStartY - 8, { align: 'right' })
+
+    doc.text(format(new Date(order.orderDate), 'dd MMM yyyy'), pageWidth - 15, tableStartY - 15, { align: 'right' })
+    doc.text(order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yyyy') : 'TBD', pageWidth - 15, tableStartY - 8, { align: 'right' })
+
+    // Prepare table data
+    const tableBody: any[] = []
+    let totalQty = 0
+    let totalAmount = 0
+
+    if (order.items && order.items.length > 0) {
+      order.items.forEach((item, index) => {
+        const selectedItem = items.find(i => i.id === item.itemId)
+        const itemName = selectedItem ? `${selectedItem.name}` : `Item ${item.itemId}`
+
+        tableBody.push([
+          (index + 1).toString(),
+          itemName,
+          (item.quantity || 0).toFixed(2),
+          (item.unitPrice || 0).toFixed(2),
+          ((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        ])
+
+        totalQty += item.quantity || 0
+        totalAmount += (item.quantity || 0) * (item.unitPrice || 0)
+      })
+    }
+
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [['#', 'Item & Description', 'Qty', 'Rate', 'Amount (LKR)']],
+      body: tableBody,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [50, 50, 50],
+        textColor: 255,
+        fontStyle: 'normal',
+        halign: 'left'
+      },
+      columnStyles: {
+        0: { cellWidth: 15, halign: 'center' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 25, halign: 'right' },
+        3: { cellWidth: 30, halign: 'right' },
+        4: { cellWidth: 35, halign: 'right' }
+      },
+      styles: {
+        fontSize: 9,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1
+      },
+      alternateRowStyles: {
+        fillColor: [255, 255, 255]
+      },
+      margin: { left: 15, right: 15 }
+    })
+
+    // Sub Total & Total
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Sub Total', pageWidth - 50, finalY, { align: 'right' })
+    doc.text(totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), pageWidth - 15, finalY, { align: 'right' })
+
+    doc.line(15, finalY + 5, pageWidth - 15, finalY + 5)
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Total', pageWidth - 50, finalY + 15, { align: 'right' })
+    doc.text(`LKR ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 15, finalY + 15, { align: 'right' })
+
+    // Terms & Conditions
+    let termsY = finalY + 40
+    if (termsY > pageHeight - 40) {
+      doc.addPage()
+      termsY = 20
+    }
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Terms & Conditions', 15, termsY)
+
+    doc.setFontSize(9)
+    doc.setTextColor(50, 50, 50)
+    const terms = [
+      '- Prices are fixed and inclusive of all applicable charges unless agreed otherwise in writing by both parties.',
+      '- The Supplier must deliver goods within the agreed timeline and inform CCPL in advance of any delays.',
+      '- All goods must align with agreed specifications, finalized samples, and quality standards.',
+      '- Payments will be made as per the agreed terms in the purchase order and/or invoice.'
+    ]
+
+    termsY += 7
+    terms.forEach(term => {
+      doc.text(term, 15, termsY)
+      termsY += 5
+    })
+
+    // Footer signature
+    // doc.setFontSize(10)
+    // doc.setTextColor(150, 150, 150)
+    // doc.text('POWERED BY CODE AQUA ERP', 15, pageHeight - 15)
 
     // Save the PDF
     const fileName = `PO_${order.orderNumber}_${format(new Date(), 'yyyyMMdd')}.pdf`

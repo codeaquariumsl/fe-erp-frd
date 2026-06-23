@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useMemo } from "react"
 import * as XLSX from "xlsx"
@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, MoreHorizontal, Truck, MapPin, Clock, CheckCircle, CheckCircle2, AlertTriangle, Eye, Edit, Trash2, Route, Printer, FileText, BarChart3, X, Package, Send, CircleDot, HourglassIcon, Loader2, Check, ChevronsUpDown, FileDown } from "lucide-react"
 import { format } from "date-fns"
 import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { CustomerSelect } from "@/components/customer/customer-select"
@@ -329,196 +330,192 @@ export default function DeliveryOrdersPage() {
     }
   }
 
-  // Print PDF handler - Packing Slip Format
+  // Print PDF handler - Delivery Note Format
   const handlePrintPDF = (order: any) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
     const margin = 15;
 
-    // Helper: Right align text
-    const rightText = (text: string, y: number, x: number = pageWidth - margin) => {
-      doc.text(text, x, y, { align: "right" });
-    };
-
     // 1. Header Section (Logo + Company Details)
     let yPos = 20;
 
     // Logo
     try {
-      doc.addImage("/assets/codeaqua_logo.png", "PNG", margin, yPos - 5, 40, 35);
+      // Using the logo from the public assets folder
+      doc.setFillColor(253, 203, 88); // Yellowish circle
+      doc.circle(margin + 15, yPos + 5, 15, "F");
+      doc.addImage("/assets/fruit_easy_logo.png", "PNG", margin, yPos - 10, 30, 30);
     } catch (e) {
-      console.error("Failed to add logo:", e);
-      doc.setTextColor(76, 175, 80);
-      doc.setFontSize(22);
+      console.error("Failed to add logo to PDF:", e);
+      doc.setFillColor(253, 203, 88); // Yellowish circle
+      doc.circle(margin + 15, yPos + 5, 15, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text("Code Aqua", margin, yPos + 10);
+      doc.text("fe", margin + 10, yPos + 2);
+      doc.setFontSize(8);
+      doc.text("FRUIT", margin + 8, yPos + 6);
+      doc.text("eazy", margin + 9, yPos + 10);
     }
+
+    yPos += 30;
 
     // Company Details
-    doc.setTextColor(60, 60, 60);
-    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    const companyX = margin + 50;
-    doc.text("Code Aqua ERP Solutions", companyX, yPos);
-
+    doc.text("Fruit Eazy", margin, yPos);
     yPos += 5;
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text("B03, Crescat Boulevard, No 77 Colombo 03", companyX, yPos);
+    doc.text("No. 358,", margin, yPos);
     yPos += 4;
-    doc.text("VAT, 102861841 7000", companyX, yPos);
+    doc.text("Jana Jaya City Mall,", margin, yPos);
     yPos += 4;
-    doc.text("+9471672564", companyX, yPos);
+    doc.text("Rajagiriya Western Province", margin, yPos);
     yPos += 4;
-    doc.text("info@bhlanka.com", companyX, yPos);
+    doc.text("SriLanka", margin, yPos);
     yPos += 4;
-    doc.text("www.bhlanka.com", companyX, yPos);
+    doc.text("0744118869", margin, yPos);
+    yPos += 4;
+    doc.text("office@ceyloncarb.com", margin, yPos);
 
-    yPos += 15;
-
-    // 2. Title "Packing Slip"
+    // DELIVERY NOTE title
     doc.setFontSize(24);
-    doc.setTextColor(70, 130, 180); // Steel Blue style color
-    doc.setFont("helvetica", "bold");
-    doc.text("Packing Slip", pageWidth - margin, 35, { align: "right" });
-
-    if (order.status === "Pending") {
-      doc.setFontSize(14);
-      doc.setTextColor(220, 53, 69); // Red color for Not Approved
-      doc.text("Not Approved", pageWidth - margin, 42, { align: "right" });
-    }
-
-    yPos += 15;
-
-    // 3. Bill To / Ship To / Invoice Details
-    doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
+    doc.text("DELIVERY NOTE", pageWidth - margin, 25, { align: "right" });
 
-    const leftColX = margin;
-    const midColX = margin + 70;
-    const rightColX = pageWidth - margin - 60;
-
-    // Column Headers
+    // INV Number
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text("BILL TO", leftColX, yPos);
-    doc.text("SHIP TO", midColX, yPos);
+    doc.text(`# ${order.doNumber || order.SalesOrder?.invoiceNumber || "INV-000"}`, pageWidth - margin, 32, { align: "right" });
 
-    // Invoice/DO No & Date (Right aligned block)
-    // Label aligned left of value, or block aligned right?
-    // Image shows labels aligned with values on the right side.
-    const labelX = rightColX;
-
-    doc.text(`INVOICE NO. ${order.doNumber || order.SalesOrder?.invoiceNumber || "-"}`, pageWidth - margin, yPos, { align: "right" });
-    yPos += 5;
-    doc.text(`DATE ${order.deliveryDate ? format(new Date(order.deliveryDate), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy")}`, pageWidth - margin, yPos, { align: "right" });
-
-    // Reset Y for Bill/Ship content
-    yPos -= 5;
-    yPos += 5;
-
-    doc.setFont("helvetica", "normal");
-
-    // Bill To Content
-    let billY = yPos;
-    const customerName = order.SalesOrder?.Customer?.name || order.Customer?.name || "-";
-    const customerAddress = order.SalesOrder?.Customer?.address || order.Customer?.address || "";
-
-    doc.text(customerName, leftColX, billY);
-    billY += 5;
-    const billAddressLines = doc.splitTextToSize(customerAddress, 60);
-    doc.text(billAddressLines, leftColX, billY);
-
-    // Ship To Content
-    let shipY = yPos;
-    const shipName = order.SalesOrder?.Customer?.name || order.Customer?.name || "-"; // Assuming same customer for ship to unless specific delivery address has name
-    // If delivery address is just address, use customer name?
-    doc.text(shipName, midColX, shipY);
-    shipY += 5;
-    const deliveryAddress = order.deliveryAddress || customerAddress;
-    const shipAddressLines = doc.splitTextToSize(deliveryAddress, 60);
-    doc.text(shipAddressLines, midColX, shipY);
-
-    yPos = Math.max(billY + (billAddressLines.length * 5), shipY + (shipAddressLines.length * 5)) + 15;
-
-    // 4. Sales Rep
-    doc.setFont("helvetica", "bold");
-    doc.text("SALES REP", margin, yPos);
-    yPos += 5;
-    doc.setFont("helvetica", "normal");
-    const salesRepName = order.SalesOrder?.SalesPerson?.fullName || order.SalesOrder?.SalesPerson?.username || "-";
-    // Assuming SalesOrder has SalesPerson relations included, otherwise fallback to '-'
-    doc.text(salesRepName, margin, yPos);
-
-    yPos += 15;
-
-    // 5. Items Table
-    // Header Data
-    const cols = [
-      { label: "DATE", x: margin, w: 30 },
-      { label: "DESCRIPTION", x: margin + 30 + 35, w: 80 }, // Shifted right for code
-      { label: "QTY", x: pageWidth - margin, w: 20, align: "right" }
-    ];
-    // Adding Code column between Date and Description to match image structure better?
-    // Image: DATE | [Code Column implied?] | DESCRIPTION | QTY
-    // Image rows: 12/09/2025    20001441    Kerala Mix 150g    4
-    // So columns are: DATE, CODE, DESCRIPTION, QTY
-
-    const tableCols = [
-      { label: "DATE", x: margin, w: 30 },
-      { label: "", x: margin + 35, w: 30 }, // Code column (no header text in image for Code? Or maybe it's merged)
-      { label: "DESCRIPTION", x: margin + 70, w: 80 },
-      { label: "QTY", x: pageWidth - margin, w: 20, align: "right" }
-    ];
-
-    // Header Background
-    doc.setFillColor(225, 240, 255); // Light blue
-    doc.rect(margin, yPos - 4, pageWidth - (margin * 2), 8, 'F');
-
-    doc.setFont("helvetica", "normal"); // Image headers look blue and regular/bold?
-    doc.setTextColor(100, 149, 237); // Cornflower Blue equivalent
+    // Balance Due
     doc.setFontSize(9);
+    doc.text("Balance Due", pageWidth - margin, 42, { align: "right" });
+    doc.setFontSize(12);
+    doc.text("LKR0.00", pageWidth - margin, 48, { align: "right" }); // Assuming 0.00 since it's a delivery note unless order has balance
 
-    doc.text("DATE", tableCols[0].x, yPos + 1);
-    doc.text("DESCRIPTION", tableCols[2].x, yPos + 1);
-    doc.text("QTY", tableCols[3].x, yPos + 1, { align: "right" });
+    yPos += 15;
 
-    yPos += 8;
-    doc.setTextColor(0, 0, 0);
+    // Bill To & Delivery To
+    const billToY = yPos;
     doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Bill To", margin, billToY);
+    
+    doc.setFont("helvetica", "bold");
+    const customerName = order.SalesOrder?.Customer?.name || order.Customer?.name || "-";
+    doc.text(customerName, margin, billToY + 5);
+    
+    doc.setFont("helvetica", "normal");
+    const customerAddress = order.SalesOrder?.Customer?.address || order.Customer?.address || "";
+    const billAddressLines = doc.splitTextToSize(customerAddress, 80);
+    doc.text(billAddressLines, margin, billToY + 10);
 
-    // Items
+    const deliveryToY = billToY + 5 + (billAddressLines.length * 5) + 10;
+    doc.text("Delivery To", margin, deliveryToY);
+    
+    const shipName = order.SalesOrder?.Customer?.name || order.Customer?.name || "-";
+    const deliveryAddress = order.deliveryAddress || customerAddress;
+    const shipAddressLines = doc.splitTextToSize(deliveryAddress, 80);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(shipName, margin, deliveryToY + 5);
+    doc.text(shipAddressLines, margin, deliveryToY + 10);
+
+    yPos = deliveryToY + 5 + (shipAddressLines.length * 5) + 15;
+
+    // Date
+    const dateY = yPos - 10;
+    doc.setFontSize(10);
+    doc.text("Date :", pageWidth - 50, dateY, { align: "right" });
+    doc.text(order.deliveryDate ? format(new Date(order.deliveryDate), "dd MMM yyyy") : format(new Date(), "dd MMM yyyy"), pageWidth - margin, dateY, { align: "right" });
+
+    // Table Data
+    const tableBody: any[] = [];
     if (order.DeliveryOrderItems && order.DeliveryOrderItems.length > 0) {
-      order.DeliveryOrderItems.forEach((item: any) => {
-        const itemDate = order.orderDate ? format(new Date(order.orderDate), "dd/MM/yyyy") : "-";
-        const itemCode = item.Item?.barcode || item.Item?.sku || item.item?.barcode || "-"; // Trying various paths
+      order.DeliveryOrderItems.forEach((item: any, index: number) => {
         const itemName = item.Item?.name || item.itemName || "-";
-        const qty = item.qty.toString();
-
-        doc.text(itemDate, tableCols[0].x, yPos);
-        doc.setFont("helvetica", "bold"); // Code usually bold? Image code looks bold.
-        doc.text(itemCode, tableCols[1].x, yPos);
-        doc.setFont("helvetica", "normal");
-
-        // Description might wrap
-        const descLines = doc.splitTextToSize(itemName, tableCols[2].w);
-        doc.text(descLines, tableCols[2].x, yPos);
-
-        doc.text(qty, tableCols[3].x, yPos, { align: "right" });
-
-        const lineHeight = 6;
-        yPos += Math.max(descLines.length * 5, lineHeight);
-
-        // Page Break
-        if (yPos > pageHeight - 20) {
-          doc.addPage();
-          yPos = 20;
-        }
+        const qty = parseFloat(item.qty).toFixed(2);
+        tableBody.push([
+          (index + 1).toString(),
+          itemName,
+          qty
+        ]);
       });
     }
 
+    autoTable(doc, {
+      startY: yPos,
+      head: [['#', 'Item & Description', 'Qty']],
+      body: tableBody,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [50, 50, 50],
+        textColor: 255,
+        fontStyle: 'normal',
+        halign: 'left'
+      },
+      columnStyles: {
+        0: { cellWidth: 15, halign: 'center' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 25, halign: 'right' }
+      },
+      styles: {
+        fontSize: 9,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1
+      },
+      alternateRowStyles: {
+        fillColor: [255, 255, 255]
+      },
+      margin: { left: margin, right: margin }
+    });
+
+    // Notes & Footer
+    let finalY = (doc as any).lastAutoTable.finalY + 15;
+    
+    if (finalY > pageHeight - 60) {
+      doc.addPage();
+      finalY = 20;
+    }
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text("Notes", margin, finalY);
+    
+    finalY += 6;
+    doc.setFontSize(9);
+    doc.text("Bank Details", margin, finalY);
+    
+    finalY += 6;
+    doc.text("Account Name: Ceylon Carb Private Limited", margin, finalY);
+    finalY += 4;
+    doc.text("Bank: National Development Bank (NDB)", margin, finalY);
+    finalY += 4;
+    doc.text("Bank Brach: Kohuwela", margin, finalY);
+    finalY += 4;
+    doc.text("Account Number: 111000305711", margin, finalY);
+
+    finalY += 10;
+    const notesText = "- Goods must be checked at the time of delivery. By signing the delivery note, the customer confirms that the items have been received in good condition and as per the invoice.";
+    const notesLines = doc.splitTextToSize(notesText, pageWidth - (margin * 2));
+    doc.text(notesLines, margin, finalY);
+
+    finalY += (notesLines.length * 5) + 15;
+    
+    if (finalY > pageHeight - 20) {
+        doc.addPage();
+        finalY = 20;
+    }
+    
+    doc.text("Authorized Signature", margin, finalY);
+    doc.line(margin + 32, finalY, margin + 90, finalY);
+
     // Save
-    const fileName = `PackingSlip_${order.doNumber || "Draft"}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+    const fileName = `DeliveryNote_${order.doNumber || "Draft"}_${format(new Date(), 'yyyyMMdd')}.pdf`;
     doc.save(fileName);
   }
 
