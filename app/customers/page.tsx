@@ -288,12 +288,12 @@ export default function CustomersPage() {
   const validateCustomerName = async (name: string) => {
     if (!name.trim()) return ''
 
-    const existingCustomer = customers.find(
-      customer => customer.name.toLowerCase() === name.toLowerCase() &&
-        (!editingCustomer || customer.id !== editingCustomer.id)
-    )
+    // const existingCustomer = customers.find(
+    //   customer => customer.name.toLowerCase() === name.toLowerCase() &&
+    //     (!editingCustomer || customer.id !== editingCustomer.id)
+    // )
 
-    return existingCustomer ? 'A customer with this name already exists' : ''
+    // return existingCustomer ? 'A customer with this name already exists' : ''
   }
 
   const validateCustomerEmail = async (email: string) => {
@@ -973,6 +973,7 @@ export default function CustomersPage() {
                           <SelectItem value="One month credit">One month credit</SelectItem>
                           <SelectItem value="14 days credit">14 days credit</SelectItem>
                           <SelectItem value="7 days credit">7 days credit</SelectItem>
+                          <SelectItem value="50% cash on delivery and the balance within 14 days">50% cash on delivery and the balance within 14 days</SelectItem>
                         </SelectContent>
                       </Select>
                       {formErrors.paymentMethod && (
@@ -1743,6 +1744,7 @@ export default function CustomersPage() {
                         <SelectItem value="One month credit">One month credit</SelectItem>
                         <SelectItem value="14 days credit">14 days credit</SelectItem>
                         <SelectItem value="7 days credit">7 days credit</SelectItem>
+                        <SelectItem value="50% cash on delivery and the balance within 14 days">50% cash on delivery and the balance within 14 days</SelectItem>
                       </SelectContent>
                     </Select>
                     {formErrors.paymentMethod && (

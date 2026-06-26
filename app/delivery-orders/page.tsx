@@ -125,11 +125,11 @@ export default function DeliveryOrdersPage() {
     doc.text("www.bhlanka.com", companyX, yPos);
 
     yPos += 10;
-    
+
     // 2. Title "Delivery Summary"
     const selectedOrders = deliveryOrders.filter((o: any) => selectedApprovedIds.includes(o.id));
     const isPending = selectedOrders.every((o: any) => o.status === "Pending");
-    
+
     doc.setFontSize(24);
     doc.setTextColor(70, 130, 180); // Steel Blue style color
     doc.setFont("helvetica", "normal");
@@ -392,10 +392,10 @@ export default function DeliveryOrdersPage() {
     doc.text(`# ${order.doNumber || order.SalesOrder?.invoiceNumber || "INV-000"}`, pageWidth - margin, 32, { align: "right" });
 
     // Balance Due
-    doc.setFontSize(9);
-    doc.text("Balance Due", pageWidth - margin, 42, { align: "right" });
-    doc.setFontSize(12);
-    doc.text("LKR0.00", pageWidth - margin, 48, { align: "right" }); // Assuming 0.00 since it's a delivery note unless order has balance
+    // doc.setFontSize(9);
+    // doc.text("Balance Due", pageWidth - margin, 42, { align: "right" });
+    // doc.setFontSize(12);
+    // doc.text("LKR0.00", pageWidth - margin, 48, { align: "right" }); // Assuming 0.00 since it's a delivery note unless order has balance
 
     yPos += 15;
 
@@ -404,11 +404,11 @@ export default function DeliveryOrdersPage() {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text("Bill To", margin, billToY);
-    
+
     doc.setFont("helvetica", "bold");
     const customerName = order.SalesOrder?.Customer?.name || order.Customer?.name || "-";
     doc.text(customerName, margin, billToY + 5);
-    
+
     doc.setFont("helvetica", "normal");
     const customerAddress = order.SalesOrder?.Customer?.address || order.Customer?.address || "";
     const billAddressLines = doc.splitTextToSize(customerAddress, 80);
@@ -416,11 +416,11 @@ export default function DeliveryOrdersPage() {
 
     const deliveryToY = billToY + 5 + (billAddressLines.length * 5) + 10;
     doc.text("Delivery To", margin, deliveryToY);
-    
+
     const shipName = order.SalesOrder?.Customer?.name || order.Customer?.name || "-";
     const deliveryAddress = order.deliveryAddress || customerAddress;
     const shipAddressLines = doc.splitTextToSize(deliveryAddress, 80);
-    
+
     doc.setFont("helvetica", "normal");
     doc.text(shipName, margin, deliveryToY + 5);
     doc.text(shipAddressLines, margin, deliveryToY + 10);
@@ -476,7 +476,7 @@ export default function DeliveryOrdersPage() {
 
     // Notes & Footer
     let finalY = (doc as any).lastAutoTable.finalY + 15;
-    
+
     if (finalY > pageHeight - 60) {
       doc.addPage();
       finalY = 20;
@@ -485,11 +485,11 @@ export default function DeliveryOrdersPage() {
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     doc.text("Notes", margin, finalY);
-    
+
     finalY += 6;
     doc.setFontSize(9);
     doc.text("Bank Details", margin, finalY);
-    
+
     finalY += 6;
     doc.text("Account Name: Ceylon Carb Private Limited", margin, finalY);
     finalY += 4;
@@ -505,12 +505,12 @@ export default function DeliveryOrdersPage() {
     doc.text(notesLines, margin, finalY);
 
     finalY += (notesLines.length * 5) + 15;
-    
+
     if (finalY > pageHeight - 20) {
-        doc.addPage();
-        finalY = 20;
+      doc.addPage();
+      finalY = 20;
     }
-    
+
     doc.text("Authorized Signature", margin, finalY);
     doc.line(margin + 32, finalY, margin + 90, finalY);
 
@@ -1330,8 +1330,8 @@ export default function DeliveryOrdersPage() {
       orders.forEach((o: any) => {
         if (o.DeliveryOrderItems && o.DeliveryOrderItems.length > 0) {
           o.DeliveryOrderItems.forEach((item: any) => {
-            const releaseStoreName = item.ReleaseStore?.name || 
-              stores.find(s => s.id === item.storeId)?.name || 
+            const releaseStoreName = item.ReleaseStore?.name ||
+              stores.find(s => s.id === item.storeId)?.name ||
               (item.storeId ? `Store ID ${item.storeId}` : "Not assigned")
 
             itemRows.push([
@@ -1614,17 +1614,17 @@ export default function DeliveryOrdersPage() {
                     size="sm"
                     onClick={handleCreateSummary}
                     disabled={
-                      creatingSummary || 
-                      !!createdSummaryCode || 
+                      creatingSummary ||
+                      !!createdSummaryCode ||
                       deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).every(o => o.status === "Pending")
                     }
                     title={deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).every(o => o.status === "Pending") ? "Cannot create summary for Pending orders" : ""}
                   >
                     {creatingSummary ? "Creating..." : createdSummaryCode ? "Summary Created" : "Create Summary"}
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={handlePrintSummaryPDF}
                     disabled={summarizedItems.length === 0}
                   >
@@ -2014,13 +2014,13 @@ export default function DeliveryOrdersPage() {
             </Button>
 
             {/* Stock Release Summary Button */}
-            <Button 
+            <Button
               variant="outline"
               onClick={() => handleShowSummaryDialog()}
               disabled={
-                selectedApprovedIds.length === 0 || 
-                (deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).some(o => o.status === "Pending") && 
-                 deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).some(o => o.status === "Approved"))
+                selectedApprovedIds.length === 0 ||
+                (deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).some(o => o.status === "Pending") &&
+                  deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).some(o => o.status === "Approved"))
               }
             >
               <BarChart3 className="h-4 w-4 mr-2" />
@@ -2198,7 +2198,7 @@ export default function DeliveryOrdersPage() {
                       onChange={(e) => {
                         const selectableOrders = deliveryOrders.filter(o => o.status === "Pending" || o.status === "Approved");
                         const selectableIds = selectableOrders.map(o => o.id);
-                        
+
                         if (e.target.checked) {
                           // Add visible selectable IDs to the current selection
                           setSelectedApprovedIds(Array.from(new Set([...(selectedApprovedIds || []), ...selectableIds])));

@@ -989,7 +989,7 @@ export default function RoutesPage() {
 
         {/* Route Details Dialog */}
         <Dialog open={!!viewingRoute} onOpenChange={() => setViewingRoute(null)}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Route Details</DialogTitle>
             </DialogHeader>
