@@ -957,11 +957,11 @@ export default function CustomersPage() {
                         <div className="text-xs text-red-600 mt-1">{formErrors.creditLimit}</div>
                       )}
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="paymentMethod">Payment Method <span className="text-red-500">*</span></Label>
-                      <Select 
-                        value={formData.paymentMethod} 
+                      <Select
+                        value={formData.paymentMethod}
                         onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
                       >
                         <SelectTrigger className={formErrors.paymentMethod ? "border-red-500" : ""}>
@@ -1371,8 +1371,8 @@ export default function CustomersPage() {
                     <TableCell className="py-2">
                       {customer.latitude && customer.longitude ? (
                         <div className="text-xs">
-                          <div>Lat: {customer.latitude}</div>
-                          <div>Lng: {customer.longitude}</div>
+                          {/* <div>Lat: {customer.latitude}</div>
+                          <div>Lng: {customer.longitude}</div> */}
                           <a
                             href={`https://www.google.com/maps/search/?api=1&query=${customer.latitude},${customer.longitude}`}
                             target="_blank"
@@ -1730,8 +1730,8 @@ export default function CustomersPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="edit-paymentMethod">Payment Method <span className="text-red-500">*</span></Label>
-                    <Select 
-                      value={formData.paymentMethod} 
+                    <Select
+                      value={formData.paymentMethod}
                       onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
                     >
                       <SelectTrigger className={formErrors.paymentMethod ? "border-red-500" : ""}>
