@@ -38,6 +38,8 @@ import {
   Receipt
 } from "@/lib/api"
 import { ERPLayout } from "@/components/layouts/erp-layout"
+import { KpiCard } from "@/components/dashboard/kpi-card"
+import { KpiSection } from "@/components/dashboard/kpi-section"
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -384,166 +386,82 @@ export default function Dashboard() {
         </div>
 
         {/* --- KPI SECTION: INVOICED SALES --- */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <span className="w-1.5 h-3 bg-emerald-600 rounded-full"></span>
-              Invoiced Sales Performance
-            </h2>
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">Invoices</Badge>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {/* Weekly Sales */}
-            <Card className="hover:shadow-md transition-all duration-300 border-slate-200/60 overflow-hidden group">
-              <CardContent className="p-5 relative">
-                <div className="absolute right-4 top-4 p-2 bg-emerald-50 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                  <DollarSign className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Weekly Invoiced Sales</h3>
-                  <div className="text-2xl font-bold text-slate-900">
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : formatCurrency(weeklySales)}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {weeklySalesTrend >= 0 ? (
-                      <span className="text-emerald-600 font-medium flex items-center"><ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />+{weeklySalesTrend}%</span>
-                    ) : (
-                      <span className="text-red-600 font-medium flex items-center"><ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />{weeklySalesTrend}%</span>
-                    )}
-                    <span className="text-slate-400">vs last week</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Monthly Sales */}
-            <Card className="hover:shadow-md transition-all duration-300 border-slate-200/60 overflow-hidden group">
-              <CardContent className="p-5 relative">
-                <div className="absolute right-4 top-4 p-2 bg-emerald-50 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                  <TrendingUp className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Monthly Invoiced Sales</h3>
-                  <div className="text-2xl font-bold text-slate-900">
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : formatCurrency(monthlySales)}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {monthlySalesTrend >= 0 ? (
-                      <span className="text-emerald-600 font-medium flex items-center"><ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />+{monthlySalesTrend}%</span>
-                    ) : (
-                      <span className="text-red-600 font-medium flex items-center"><ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />{monthlySalesTrend}%</span>
-                    )}
-                    <span className="text-slate-400">vs last month</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Annual Sales */}
-            <Card className="hover:shadow-md transition-all duration-300 border-slate-200/60 overflow-hidden group">
-              <CardContent className="p-5 relative">
-                <div className="absolute right-4 top-4 p-2 bg-emerald-50 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                  <Sparkles className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Annual Invoiced Sales (Rolling)</h3>
-                  <div className="text-2xl font-bold text-slate-900">
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : formatCurrency(annualSales)}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {annualSalesTrend >= 0 ? (
-                      <span className="text-emerald-600 font-medium flex items-center"><ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />+{annualSalesTrend}%</span>
-                    ) : (
-                      <span className="text-red-600 font-medium flex items-center"><ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />{annualSalesTrend}%</span>
-                    )}
-                    <span className="text-slate-400">vs last year</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <KpiSection
+          title="Invoiced Sales Performance"
+          badgeLabel="Invoices"
+          accentDot="bg-emerald-600"
+          badgeCls="bg-emerald-50 text-emerald-700 border-emerald-200"
+        >
+          <KpiCard
+            label="Weekly Invoiced Sales"
+            value={formatCurrency(weeklySales)}
+            trend={weeklySalesTrend}
+            trendLabel="vs last week"
+            icon={<DollarSign className="h-5 w-5" />}
+            accentBg="bg-emerald-50"
+            accentColor="text-emerald-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Monthly Invoiced Sales"
+            value={formatCurrency(monthlySales)}
+            trend={monthlySalesTrend}
+            trendLabel="vs last month"
+            icon={<TrendingUp className="h-5 w-5" />}
+            accentBg="bg-emerald-50"
+            accentColor="text-emerald-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Annual Invoiced Sales (Rolling)"
+            value={formatCurrency(annualSales)}
+            trend={annualSalesTrend}
+            trendLabel="vs last year"
+            icon={<Sparkles className="h-5 w-5" />}
+            accentBg="bg-emerald-50"
+            accentColor="text-emerald-600"
+            loading={loading}
+          />
+        </KpiSection>
 
         {/* --- KPI SECTION: COLLECTIONS --- */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <span className="w-1.5 h-3 bg-amber-500 rounded-full"></span>
-              Collections & Cashflow
-            </h2>
-            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-semibold">Receipts</Badge>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {/* Weekly Collections */}
-            <Card className="hover:shadow-md transition-all duration-300 border-slate-200/60 overflow-hidden group">
-              <CardContent className="p-5 relative">
-                <div className="absolute right-4 top-4 p-2 bg-amber-50 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                  <DollarSign className="h-5 w-5 text-amber-600" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Weekly Collected Receipts</h3>
-                  <div className="text-2xl font-bold text-slate-900">
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : formatCurrency(weeklyCollections)}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {weeklyCollectionsTrend >= 0 ? (
-                      <span className="text-emerald-600 font-medium flex items-center"><ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />+{weeklyCollectionsTrend}%</span>
-                    ) : (
-                      <span className="text-red-600 font-medium flex items-center"><ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />{weeklyCollectionsTrend}%</span>
-                    )}
-                    <span className="text-slate-400">vs last week</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Monthly Collections */}
-            <Card className="hover:shadow-md transition-all duration-300 border-slate-200/60 overflow-hidden group">
-              <CardContent className="p-5 relative">
-                <div className="absolute right-4 top-4 p-2 bg-amber-50 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                  <TrendingUp className="h-5 w-5 text-amber-600" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Monthly Collected Receipts</h3>
-                  <div className="text-2xl font-bold text-slate-900">
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : formatCurrency(monthlyCollections)}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {monthlyCollectionsTrend >= 0 ? (
-                      <span className="text-emerald-600 font-medium flex items-center"><ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />+{monthlyCollectionsTrend}%</span>
-                    ) : (
-                      <span className="text-red-600 font-medium flex items-center"><ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />{monthlyCollectionsTrend}%</span>
-                    )}
-                    <span className="text-slate-400">vs last month</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Annual Collections */}
-            <Card className="hover:shadow-md transition-all duration-300 border-slate-200/60 overflow-hidden group">
-              <CardContent className="p-5 relative">
-                <div className="absolute right-4 top-4 p-2 bg-amber-50 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                  <Sparkles className="h-5 w-5 text-amber-600" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Annual Collected Receipts (Rolling)</h3>
-                  <div className="text-2xl font-bold text-slate-900">
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : formatCurrency(annualCollections)}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {annualCollectionsTrend >= 0 ? (
-                      <span className="text-emerald-600 font-medium flex items-center"><ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />+{annualCollectionsTrend}%</span>
-                    ) : (
-                      <span className="text-red-600 font-medium flex items-center"><ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />{annualCollectionsTrend}%</span>
-                    )}
-                    <span className="text-slate-400">vs last year</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <KpiSection
+          title="Collections & Cashflow"
+          badgeLabel="Receipts"
+          accentDot="bg-amber-500"
+          badgeCls="bg-amber-50 text-amber-700 border-amber-200"
+        >
+          <KpiCard
+            label="Weekly Collected Receipts"
+            value={formatCurrency(weeklyCollections)}
+            trend={weeklyCollectionsTrend}
+            trendLabel="vs last week"
+            icon={<DollarSign className="h-5 w-5" />}
+            accentBg="bg-amber-50"
+            accentColor="text-amber-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Monthly Collected Receipts"
+            value={formatCurrency(monthlyCollections)}
+            trend={monthlyCollectionsTrend}
+            trendLabel="vs last month"
+            icon={<TrendingUp className="h-5 w-5" />}
+            accentBg="bg-amber-50"
+            accentColor="text-amber-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Annual Collected Receipts (Rolling)"
+            value={formatCurrency(annualCollections)}
+            trend={annualCollectionsTrend}
+            trendLabel="vs last year"
+            icon={<Sparkles className="h-5 w-5" />}
+            accentBg="bg-amber-50"
+            accentColor="text-amber-600"
+            loading={loading}
+          />
+        </KpiSection>
 
         {/* --- CHARTS SECTION --- */}
         <div className="grid gap-6 lg:grid-cols-3">

@@ -3758,6 +3758,7 @@ export interface Invoice {
   paidAmount?: number;
   setoffAmount?: number;
   status?: string;
+  cancelReason?: string;
   items: InvoiceItem[];
   customer?: Customer;
   SalesPerson?: User;
@@ -3785,6 +3786,7 @@ export interface InvoiceResponse {
   paidAmount: number;
   setoffAmount: number;
   status: string;
+  cancelReason?: string;
   createdAt: string;
   updatedAt: string;
   Customer?: Customer;
@@ -3833,6 +3835,7 @@ function transformInvoice(backendInvoice: InvoiceResponse): Invoice {
     paidAmount: typeof backendInvoice.paidAmount === 'string' ? parseFloat(backendInvoice.paidAmount) : (backendInvoice.paidAmount || 0),
     setoffAmount: typeof backendInvoice.setoffAmount === 'string' ? parseFloat(backendInvoice.setoffAmount) : (backendInvoice.setoffAmount || 0),
     status: backendInvoice.status,
+    cancelReason: backendInvoice.cancelReason,
     SalesPerson: backendInvoice.SalesPerson,
     customer: backendInvoice.Customer,
     SalesOrder: backendInvoice.SalesOrder,
@@ -3927,6 +3930,14 @@ export const invoicesApi = {
   async getByCustomerId(customerId: number | string): Promise<Invoice[]> {
     const response = await apiRequest<InvoiceResponse[]>(`/invoices/customer/${customerId}`);
     return Array.isArray(response) ? response.map(transformInvoice) : [];
+  },
+
+  async cancel(id: number | string, cancelReason?: string): Promise<Invoice> {
+    const response = await apiRequest<InvoiceResponse>(`/invoices/${id}/cancel`, {
+      method: "PATCH",
+      body: JSON.stringify({ cancelReason }),
+    });
+    return transformInvoice(response);
   },
 
   remove: (id: number | string) => apiRequest<void>(`/invoices/${id}`, { method: "DELETE" }),

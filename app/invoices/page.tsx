@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -36,6 +37,17 @@ import {
     type User,
 } from "@/lib/api"
 import InvoicesLoading from "./loading"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const initialFormData: Omit<Invoice, 'id'> = {
     DeliveryOrder: null,
@@ -65,6 +77,7 @@ export default function InvoicesPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null)
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+    const [cancelReason, setCancelReason] = useState("")
 
     // Search and Filter states
     const [searchTerm, setSearchTerm] = useState("")
@@ -504,6 +517,25 @@ export default function InvoicesPage() {
         }
     }
 
+    const handleCancelInvoice = async (id: number) => {
+        try {
+            await invoicesApi.cancel(id, cancelReason)
+            toast({
+                title: "Success",
+                description: "Invoice cancelled successfully. Stocks have been reversed."
+            })
+            setCancelReason("")
+            loadData()
+        } catch (error) {
+            console.error("Failed to cancel invoice:", error)
+            toast({
+                title: "Failed to Cancel Invoice",
+                description: error instanceof Error ? error.message : "An unexpected error occurred.",
+                variant: "destructive"
+            })
+        }
+    }
+
     const printInvoice = (invoice: Invoice) => {
         const doc = new jsPDF()
         const pageWidth = doc.internal.pageSize.width
@@ -600,7 +632,7 @@ export default function InvoicesPage() {
         yPos += 4
         doc.text("office@ceyloncarb.com", margin, yPos)
 
-        yPos += 15
+        yPos += 10
 
         // 2. Bill To & Info Section
         const billToY = yPos
@@ -657,7 +689,7 @@ export default function InvoicesPage() {
         doc.text("Supplier TIN :", labelX, rightY, { align: "right" })
         rightText(supplierTin, rightY, valueX)
 
-        yPos = Math.max(leftY, rightY) + 15
+        yPos = Math.max(leftY, rightY) + 8
 
         // 3. Table Header
         doc.setFillColor(60, 60, 60)
@@ -700,10 +732,7 @@ export default function InvoicesPage() {
             doc.text(itemLines[0], cols[1].x, yPos)
 
             // Qty
-            doc.text(qty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cols[2].x, yPos, { align: "right" })
-            doc.setFontSize(7)
-            doc.setTextColor(100, 100, 100)
-            doc.text("pcs", cols[2].x, yPos + 4, { align: "right" }) // Under Qty
+            doc.text(qty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " pcs", cols[2].x, yPos, { align: "right" })
 
             // Rate and Amount
             doc.setFontSize(9)
@@ -711,12 +740,12 @@ export default function InvoicesPage() {
             doc.text(Number(price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cols[3].x, yPos, { align: "right" })
             doc.text(Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cols[4].x, yPos, { align: "right" })
 
-            yPos += 8
+            yPos += 2
 
             // Light gray line
             doc.setDrawColor(220, 220, 220)
             doc.line(margin, yPos, pageWidth - margin, yPos)
-            yPos += 6
+            yPos += 4
 
             if (yPos > pageHeight - 60) {
                 doc.addPage()
@@ -1231,6 +1260,21 @@ export default function InvoicesPage() {
                                     </div>
                                 </div>
 
+                                {/* Cancellation Alert with Reason */}
+                                {viewingInvoice.status === "Cancelled" && (
+                                    <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-lg text-sm flex flex-col gap-1">
+                                        <div className="font-semibold flex items-center gap-1">
+                                            <XCircle className="h-4 w-4 text-red-600" />
+                                            Invoice Cancelled
+                                        </div>
+                                        {viewingInvoice.cancelReason && (
+                                            <div>
+                                                <span className="font-medium text-red-900">Reason:</span> {viewingInvoice.cancelReason}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Customer Details - Compact */}
                                 {viewingInvoice.customer && (
                                     <div className="border rounded-lg p-3 bg-blue-50">
@@ -1457,15 +1501,41 @@ export default function InvoicesPage() {
 
                                 {/* Action Buttons - Compact */}
                                 <div className="flex justify-between items-center pt-3 border-t gap-3">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => printInvoice(viewingInvoice)}
-                                        className="text-purple-600"
-                                    >
-                                        <Printer className="mr-2 h-4 w-4" />
-                                        Print PDF
-                                    </Button>
+                                    {viewingInvoice.status === "Approved" && (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="outline" size="sm" className="text-red-600 border-red-600 hover:text-white hover:border-red-800 hover:bg-red-700">
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Cancel Invoice
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className="text-red-600">Are you sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        <br />
+                                                        This action cannot be undone. This will permanently cancel the invoice.
+                                                        Reason:
+                                                        <Textarea
+                                                            value={cancelReason}
+                                                            onChange={(e) => setCancelReason(e.target.value)}
+                                                            placeholder="Enter reason for cancellation..."
+                                                            className="w-full mt-2 min-h-[100px]"
+                                                        />
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>No</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                                                        onClick={() => {
+                                                            handleCancelInvoice(viewingInvoice.id!)
+                                                            setIsViewDialogOpen(false)
+                                                        }}>Yes, Cancel</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
 
                                     <div className="flex gap-2">
                                         {(!viewingInvoice.status || viewingInvoice.status === "Pending") && (
@@ -1481,6 +1551,15 @@ export default function InvoicesPage() {
                                                 Approve
                                             </Button>
                                         )}
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => printInvoice(viewingInvoice)}
+                                            className="text-purple-600"
+                                        >
+                                            <Printer className="mr-2 h-4 w-4" />
+                                            Print PDF
+                                        </Button>
                                         <Button
                                             size="sm"
                                             variant="outline"
@@ -1601,22 +1680,55 @@ export default function InvoicesPage() {
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
-                                                {/* <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleEdit(invoice)}
-                                            >
-                                                <Edit className="h-4 w-4" />
-                                            </Button> */}
                                                 {(!invoice.status || invoice.status === "Approved") && (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => printInvoice(invoice)}
                                                         className="text-purple-600 h-7 w-7 p-0"
+                                                        title="Print PDF"
                                                     >
                                                         <Printer className="h-4 w-4" />
                                                     </Button>
+                                                )}
+                                                {invoice.status === "Approved" && (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            {/* <Button
+                                                                 variant="outline"
+                                                                 size="sm"
+                                                                 className="h-7 w-7 p-0 text-red-600 hover:text-white hover:border-red-800 hover:bg-red-700"
+                                                                 title="Cancel Invoice"
+                                                                 onClick={() => setCancelReason("")}
+                                                             >
+                                                                 <XCircle className="h-4 w-4" />
+                                                             </Button> */}
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle className="text-red-600">Are you sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    <br />
+                                                                    This action cannot be undone. This will permanently cancel the invoice.
+                                                                    <div className="mt-4">
+                                                                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Reason:</label>
+                                                                        <Textarea
+                                                                            value={cancelReason}
+                                                                            onChange={(e) => setCancelReason(e.target.value)}
+                                                                            placeholder="Enter reason for cancellation..."
+                                                                            className="w-full mt-2 min-h-[100px]"
+                                                                        />
+                                                                    </div>
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel onClick={() => setCancelReason("")}>No</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                                                                    onClick={() => handleCancelInvoice(invoice.id!)}>Yes, Cancel</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 )}
                                             </div>
                                         </TableCell>

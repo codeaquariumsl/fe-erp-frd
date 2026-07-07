@@ -77,7 +77,7 @@ export function ProtectedRoute({ children, requiredPermission, requiredRole }: P
 
         <div className="max-w-lg w-full relative z-10 animate-in fade-in zoom-in-95 duration-300">
           <div className="bg-white/75 backdrop-blur-xl border border-rose-100/80 shadow-[0_20px_50px_rgba(225,29,72,0.04)] rounded-3xl p-8 md:p-10 flex flex-col items-center text-center">
-            
+
             {/* Pulsing Lock Icon */}
             <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-rose-100/60 animate-ping opacity-60 duration-1000"></div>
@@ -129,7 +129,7 @@ export function ProtectedRoute({ children, requiredPermission, requiredRole }: P
               >
                 <ArrowLeft className="w-4 h-4" /> Go Back
               </button>
-              
+
               <button
                 onClick={handleHomeRedirect}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white rounded-xl text-sm font-bold active:scale-[0.98] transition-all duration-200 shadow-md shadow-emerald-100"
@@ -157,27 +157,27 @@ export function ProtectedRoute({ children, requiredPermission, requiredRole }: P
         {/* Decorative Background Elements */}
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-emerald-100/30 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-amber-100/30 rounded-full blur-[120px]" />
-        
+
         <div className="flex flex-col items-center max-w-md w-full relative z-10 animate-in fade-in duration-500">
           {/* Glassmorphic card */}
           <div className="bg-white/60 backdrop-blur-xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.04)] rounded-3xl p-8 w-full flex flex-col items-center text-center">
-            
+
             {/* Brand Logo */}
-            <div className="flex items-center space-x-2.5 mb-8">
+            {/* <div className="flex items-center space-x-2.5 mb-8">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-lime-400 flex items-center justify-center shadow-md shadow-emerald-100/50">
                 <Citrus className="w-5 h-5 text-white animate-pulse" />
               </div>
               <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 via-emerald-500 to-lime-600 bg-clip-text text-transparent">
                 Fruit Eazy
               </span>
-            </div>
+            </div> */}
 
             {/* Glowing outer spin loader */}
             <div className="relative w-28 h-28 mb-8 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full border-[3px] border-emerald-100/40"></div>
               <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-emerald-500 border-r-lime-500 animate-spin"></div>
               <div className="w-16 h-16 rounded-full bg-white shadow-lg border border-emerald-50/50 flex items-center justify-center scale-95 hover:scale-100 transition-transform duration-300">
-                <Citrus className="w-8 h-8 text-emerald-500 animate-bounce duration-1000" />
+                <img src="/assets/logo.png" alt="H2BIS Logo" className="w-[300px] h-[300px] object-contain animate-float" />
               </div>
             </div>
 
@@ -192,18 +192,42 @@ export function ProtectedRoute({ children, requiredPermission, requiredRole }: P
             </div>
 
             {/* Progress bar */}
-            <div className="w-full mt-6 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-              <div 
+            {/* <div className="w-full mt-6 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div
                 className="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-lime-400 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               ></div>
+            </div> */}
+
+            <div className="w-full max-w-[200px] mt-2">
+              <div className="h-1 bg-slate-200/60 dark:bg-slate-800/60 rounded-full overflow-hidden relative">
+                <div className="absolute top-0 bottom-0 h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-lime-400 rounded-full w-24 animate-loading-bar" />
+              </div>
             </div>
-            
+
             <div className="text-[10px] font-semibold text-slate-400 mt-2.5 uppercase tracking-wider font-mono">
               Loading: {progress}%
             </div>
           </div>
         </div>
+
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          @keyframes loading-bar {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(250%); }
+          }
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+          }
+          .animate-loading-bar {
+            animation: loading-bar 1.6s ease-in-out infinite;
+          }
+          .animate-float {
+            animation: float 3s ease-in-out infinite;
+          }
+        `}} />
       </div>
     )
   }

@@ -142,7 +142,7 @@ export default function DispatchedOrdersPage() {
                 search: searchTerm,
                 isDispatched: statusFilter === 'all' ? undefined : (statusFilter === 'dispatched')
             }) as any
-            
+
             setSummaryData({
                 summaries: response.summaries || [],
                 pagination: response.pagination || {
@@ -721,7 +721,7 @@ export default function DispatchedOrdersPage() {
                                     </TableBody>
                                 </Table>
 
-                                 <PaginationControls />
+                                <PaginationControls />
                             </>
                         )}
                     </CardContent>
@@ -744,13 +744,13 @@ export default function DispatchedOrdersPage() {
                                         <div>
                                             <p className="text-sm text-gray-500">Dispatch Date</p>
                                             <p className="font-medium">
-                                                {format(new Date(selectedSummary.SummaryItems[0].delivery.dispatchDate), 'dd/MM/yyyy')}
+                                                {selectedSummary.SummaryItems[0].delivery.dispatchDate ? format(new Date(selectedSummary.SummaryItems[0].delivery.dispatchDate), 'dd/MM/yyyy') : '-'}
                                             </p>
                                         </div>
                                         <div>
                                             <p className="text-sm text-gray-500">Delivery Date</p>
                                             <p className="font-medium">
-                                                {selectedSummary.SummaryItems[0].delivery.deliveryDate ? format(new Date(selectedSummary.SummaryItems[0].delivery.deliveryDate), 'dd/MM/yyyy') : 'N/A'}
+                                                {selectedSummary.SummaryItems[0].delivery.deliveryDate ? format(new Date(selectedSummary.SummaryItems[0].delivery.deliveryDate), 'dd/MM/yyyy') : '-'}
                                             </p>
                                         </div>
                                     </div>
@@ -760,7 +760,7 @@ export default function DispatchedOrdersPage() {
                             <Table className="text-xs">
                                 <TableHeader className="bg-slate-100 dark:bg-slate-800">
                                     <TableRow>
-                                        <TableHead className="font-semibold">DO Number</TableHead>
+                                        {/* <TableHead className="font-semibold">DO Number</TableHead> */}
                                         <TableHead className="font-semibold">Item</TableHead>
                                         <TableHead className="font-semibold">Quantity</TableHead>
                                         <TableHead className="font-semibold">Batch</TableHead>
@@ -770,7 +770,7 @@ export default function DispatchedOrdersPage() {
                                 <TableBody>
                                     {selectedSummary?.SummaryItems.map((item) => (
                                         <TableRow key={item.id}>
-                                            <TableCell className="py-2">{item.DeliveryOrder.doNumber}</TableCell>
+                                            {/* <TableCell className="py-2">{item.DeliveryOrder.doNumber}</TableCell> */}
                                             <TableCell className="py-2">
                                                 <div>
                                                     <div>{item.Item.name}</div>

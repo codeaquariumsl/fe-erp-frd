@@ -546,8 +546,8 @@ export default function InventoryPage() {
                 <span className="ml-2">Loading inventory...</span>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
+              <Table className="text-xs">
+                <TableHeader className="bg-gray-100">
                   <TableRow>
                     <TableHead>Item</TableHead>
                     <TableHead>Category</TableHead>
@@ -572,21 +572,21 @@ export default function InventoryPage() {
                   ) : (
                     filteredInventory.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <div>
                             <div className="font-medium">{item.name}</div>
                             <div className="text-sm text-muted-foreground">{item.barcode}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{item.category}</TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">{item.category}</TableCell>
+                        <TableCell className="py-2">
                           <span className={item.quantity < 50 ? "text-red-600 font-medium" : ""}>
                             {item.quantity} {item.unit}
                           </span>
                         </TableCell>
                         {/* Store-specific columns */}
                         {viewMode === "stores" && (
-                          <TableCell>
+                          <TableCell className="py-2">
                             <div className="flex items-center gap-1">
                               <MapPin className="h-3 w-3 text-blue-500" />
                               <div>
@@ -602,7 +602,7 @@ export default function InventoryPage() {
                         {/* Lorry-specific columns */}
                         {viewMode === "lorries" && (
                           <>
-                            <TableCell>
+                            <TableCell className="py-2">
                               <div className="flex items-center gap-1">
                                 <svg className="h-3 w-3 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
@@ -619,7 +619,7 @@ export default function InventoryPage() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-2">
                               <div>
                                 <div className="font-medium">{item.driverName}</div>
                                 <div className="text-xs text-muted-foreground">{item.contactNumber}</div>
@@ -630,7 +630,7 @@ export default function InventoryPage() {
 
                         {/* Combined view location column */}
                         {viewMode === "combined" && (
-                          <TableCell>
+                          <TableCell className="py-2">
                             <div className="flex items-center gap-1">
                               <MapPin className="h-3 w-3 text-gray-500" />
                               <span>{item.location}</span>
@@ -645,7 +645,7 @@ export default function InventoryPage() {
 
                         {/* Reorder level - not applicable for lorries */}
                         {viewMode !== "lorries" && (
-                          <TableCell>
+                          <TableCell className="py-2">
                             <div className="text-sm">
                               <div className={item.quantity < (item.reorderLevel || 0) ? "text-red-600 font-medium" : ""}>
                                 {item.quantity}/{item.reorderLevel || 0}
@@ -654,14 +654,14 @@ export default function InventoryPage() {
                             </div>
                           </TableCell>
                         )}
-                        <TableCell>
+                        <TableCell className="py-2">
                           <div className="text-sm">
                             <div className="font-medium">LKR {(item.quantity * item.purchasePrice).toLocaleString()}</div>
                             <div className="text-xs text-muted-foreground">@ {item.purchasePrice}/unit</div>
                           </div>
                         </TableCell>
-                        <TableCell>{getStatusBadge(item.status)}</TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">{getStatusBadge(item.status)}</TableCell>
+                        <TableCell className="py-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
