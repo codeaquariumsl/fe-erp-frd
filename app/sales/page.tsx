@@ -334,7 +334,8 @@ export default function SalesPage() {
           // On error, try to fetch default items as fallback
           itemsApi.getAll()
             .then((defaultItems) => {
-              const defaultItemsWithCodes = (defaultItems || []).map((di: any) => ({
+              const defaultItemsData = Array.isArray(defaultItems) ? defaultItems : (defaultItems as any)?.data || [];
+              const defaultItemsWithCodes = defaultItemsData.map((di: any) => ({
                 item: {
                   id: di.id,
                   name: di.name,
@@ -1095,8 +1096,8 @@ export default function SalesPage() {
       ]
       const itemRows: any[][] = [itemHeader]
       orders.forEach((o) => {
-        if (o.items && o.items.length > 0) {
-          o.items.forEach((item: any) => {
+        if (o.items && (o.items as any[]).length > 0) {
+          (o.items as any[]).forEach((item: any) => {
             itemRows.push([
               o.orderNumber,
               o.customerName || "",
@@ -1109,7 +1110,7 @@ export default function SalesPage() {
               Number(item.price ?? 0),
               Number(item.discount ?? 0),
               item.isTaxItem ? "Yes" : "No",
-              Number(item.total ?? (item.qty * item.price) ?? 0),
+              Number(item.total ?? ((item.qty ?? 0) * (item.price ?? 0))),
             ])
           })
         } else {
@@ -1988,7 +1989,7 @@ export default function SalesPage() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="py-2">{formatDate(order.orderDate)}</TableCell>
+                          <TableCell className="py-2">{order.createdAt ? format(new Date(order.createdAt), "PPP p") : "-"}</TableCell>
                           <TableCell className="py-2">{formatDate(order.deliveryDate || "")}</TableCell>
                           <TableCell className="py-2">
                             <div>

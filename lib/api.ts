@@ -1319,6 +1319,7 @@ function transformSalesOrder(backendOrder: any): SalesOrder {
     isTaxInvoice: backendOrder.isTaxInvoice ?? false,
     taxRate: backendOrder.taxRate ?? 0,
     taxAmount: backendOrder.taxAmount ?? 0,
+    subTotal: backendOrder.subTotal ?? 0,
     totalAmount: backendOrder.totalAmount ?? 0,
     status: backendOrder.status,
     deliveryOrderStatus: backendOrder.deliveryOrderStatus ?? "Pending",
