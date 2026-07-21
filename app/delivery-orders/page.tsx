@@ -2790,6 +2790,7 @@ export default function DeliveryOrdersPage() {
                               {((selectedOrder.Route?.id && selectedOrder.Driver?.id)
                                 || !selectedOrder.SalesOrder.isDelivery)
                                 && selectedOrder.status !== "Approved"
+                                && selectedOrder.status !== "Scheduled"
                                 && selectedOrder.status !== "Dispatched"
                                 && selectedOrder.status !== "Delivered"
                                 && selectedOrder.DeliveryOrderItems.every((item: any) => item.storeId)
