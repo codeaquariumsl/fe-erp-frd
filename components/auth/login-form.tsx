@@ -91,7 +91,7 @@ export function LoginForm() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#EEFDF3] via-[#FAF9F5] to-[#FFF5E6]">
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#064E3B] via-[#047857] to-[#059669] p-12 text-white relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#064E3B] via-[#047857] to-[#059669] pt-6 pl-12 text-white relative overflow-hidden">
         {/* Background glow and decorative elements */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-400/20 via-transparent to-transparent opacity-85"></div>
         <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl"></div>
@@ -111,7 +111,7 @@ export function LoginForm() {
             </div>
           </div>
           {/* Center Brand Taglines & Stats Grid */}
-          <div className="my-auto space-y-8 py-8">
+          <div className="my-auto space-y-8">
             <div className="space-y-4">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-semibold text-lime-300">
                 <Sparkles className="h-3.5 w-3.5" /> Next-Gen ERP Platform
@@ -160,25 +160,25 @@ export function LoginForm() {
           </div>
 
           {/* Footer branding */}
-          <div className="text-xs text-emerald-200/80 flex justify-between items-center">
+          <div className="text-xs text-emerald-200/80 flex justify-between items-center pb-2">
             <span>© 2026 Code Aqua (Pvt) Ltd. All rights reserved.</span>
-            <span className="font-medium text-emerald-300">v3.2.0</span>
+            <span className="font-medium text-emerald-300 pr-6">v3.2.0</span>
           </div>
         </div>
       </div>
 
       {/* Right side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex-1 flex items-center justify-center p-2 md:p-6">
+        <div className="w-full max-w-md space-y-6">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center">
-            <div className="inline-flex items-center space-x-3 mb-6 bg-white/80 p-3 rounded-2xl border border-emerald-100/40 shadow-sm">
-              <div className="p-1.5 bg-white rounded-lg shadow-sm">
+            <div className="inline-flex items-center space-x-3 mb-2 bg-white/80 p-3 rounded-2xl border border-emerald-100/40 shadow-sm">
+              <div className="p-1.5 bg-green-800/95 rounded-lg shadow-sm">
                 <img src="/assets/fruit_easy_logo.png" alt="Fruit Eazy Logo" className="h-8 w-auto object-contain" />
               </div>
               <div className="text-left">
                 <h1 className="text-lg font-bold text-slate-900 leading-tight">Fruit Eazy</h1>
-                <p className="text-xs text-slate-500">Operations Portal</p>
+                <p className="text-xs text-slate-500">ERP System</p>
               </div>
             </div>
           </div>
@@ -189,7 +189,7 @@ export function LoginForm() {
           </div>
 
           <Card className="shadow-2xl border border-emerald-100/50 bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden">
-            <CardContent className="p-8">
+            <CardContent className="p-4">
               {isConnectionError && (
                 <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-2xl">
                   <div className="flex items-center space-x-2 text-amber-800">

@@ -68,6 +68,17 @@ const calculateItemTotals = (
   }
 }
 
+// Helper function to calculate free issue quantity based on item promotion rules
+const calculateFreeIssueQty = (itemObj: any, qty: number): number => {
+  if (!itemObj || !qty || qty <= 0) return 0
+  const item = itemObj.item || itemObj.Item || itemObj
+  if (!item || !item.isFreeIssue) return 0
+  const triggerQty = Number(item.freeIssuePerCount) || 0
+  const freeQty = Number(item.freeIssueCount) || 0
+  if (triggerQty <= 0 || freeQty <= 0 || qty < triggerQty) return 0
+  return Math.floor(qty / triggerQty) * freeQty
+}
+
 export default function SalesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [searchCustomerId, setSearchCustomerId] = useState("ALL")
@@ -273,7 +284,10 @@ export default function SalesPage() {
                   weight: di.weight,
                   sellingPrice: di.sellingPrice,
                   Category: di.Category,
-                  isTaxInclusive: di.isTaxInclusive
+                  isTaxInclusive: di.isTaxInclusive,
+                  isFreeIssue: di.isFreeIssue,
+                  freeIssuePerCount: di.freeIssuePerCount,
+                  freeIssueCount: di.freeIssueCount
                 },
                 availability: normalizeAvailability(di),
                 customerItemCode: {
@@ -318,7 +332,10 @@ export default function SalesPage() {
                 weight: di.weight,
                 sellingPrice: di.sellingPrice,
                 Category: di.Category,
-                isTaxInclusive: di.isTaxInclusive
+                isTaxInclusive: di.isTaxInclusive,
+                isFreeIssue: di.isFreeIssue,
+                freeIssuePerCount: di.freeIssuePerCount,
+                freeIssueCount: di.freeIssueCount
               },
               availability: normalizeAvailability(di),
               customerItemCode: {
@@ -679,6 +696,7 @@ export default function SalesPage() {
         price: sellingPrice,
         discount: item.discount || 0,
         isTaxItem: isTaxItem,
+        freeIssueQty: calculateFreeIssueQty(selectedItem, item.qty),
         taxAmount: Number(taxForItem),
         discountedAmount: Number(itemTotals.afterDiscount), // ??? why this use afterDiscount ? 
         excludingTaxAmount: Number(itemTotals.excludingTaxAmount),
@@ -763,6 +781,7 @@ export default function SalesPage() {
         qty: item.qty,
         price: item.price,
         isTaxItem: isTaxItem,
+        freeIssueQty: calculateFreeIssueQty(item, item.qty),
         discount: item.discount || 0,
         taxAmount: Number(taxForItem),
         discountedAmount: Number(itemTotals.afterDiscount),
@@ -1090,7 +1109,7 @@ export default function SalesPage() {
       // ── Sheet 2: Item Details ────────────────────────────────────────────
       const itemHeader = [
         "Order #", "Customer", "Order Date", "SO Status", "DO Status",
-        "Item Name", "Code", "Qty", "Unit Price (LKR)",
+        "Item Name", "Code", "Qty", "Free Qty", "Unit Price (LKR)",
         "Discount %", "Tax Item?",
         "Line Total (LKR)",
       ]
@@ -1107,6 +1126,7 @@ export default function SalesPage() {
               item.itemName || item.name || "",
               item.code || "",
               Number(item.qty ?? 0),
+              Number(item.freeIssueQty ?? calculateFreeIssueQty(item, item.qty ?? 0)),
               Number(item.price ?? 0),
               Number(item.discount ?? 0),
               item.isTaxItem ? "Yes" : "No",
@@ -1118,7 +1138,7 @@ export default function SalesPage() {
             o.orderNumber, o.customerName || "",
             o.orderDate ? o.orderDate.substring(0, 10) : "",
             o.status || "", o.deliveryOrderStatus || "No DO",
-            "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "",
           ])
         }
       })
@@ -1419,6 +1439,7 @@ export default function SalesPage() {
                           <TableHead className="py-1 min-w-[350px]">Item Name</TableHead>
                           <TableHead className="py-1">Code</TableHead>
                           <TableHead className="py-1">Quantity</TableHead>
+                          <TableHead className="py-1">Free Qty</TableHead>
                           <TableHead className="py-1">Price</TableHead>
                           <TableHead className="py-1">Discount (%)</TableHead>
                           <TableHead className="py-1">Discounted Price</TableHead>
@@ -1563,6 +1584,18 @@ export default function SalesPage() {
                                       </p>
                                     )}
                                   </div>
+                                </TableCell>
+                                <TableCell className="py-1">
+                                  {(() => {
+                                    const freeQty = calculateFreeIssueQty(selectedItem, item.qty)
+                                    return freeQty > 0 ? (
+                                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 font-semibold text-xs">
+                                        +{freeQty} Free
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">0</span>
+                                    )
+                                  })()}
                                 </TableCell>
                                 <TableCell className="py-1">
                                   <span className="text-xs font-medium">LKR {sellingPrice.toLocaleString()}</span>
@@ -2122,6 +2155,7 @@ export default function SalesPage() {
                       <TableRow className="bg-gray-100">
                         <TableHead>Item</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Free Qty</TableHead>
                         <TableHead className="text-right">Price</TableHead>
                         <TableHead className="text-right">Discount</TableHead>
                         <TableHead className="text-right">Discounted Price</TableHead>
@@ -2162,6 +2196,18 @@ export default function SalesPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">{item.qty} {unit}</TableCell>
+                            <TableCell className="text-right">
+                              {(() => {
+                                const freeQty = item.freeIssueQty ?? calculateFreeIssueQty(item, item.qty);
+                                return freeQty > 0 ? (
+                                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 font-semibold text-xs">
+                                    +{freeQty} Free
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">0</span>
+                                );
+                              })()}
+                            </TableCell>
                             <TableCell className="text-right">{Number(unitPrice).toLocaleString('en-US', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2
@@ -2490,6 +2536,7 @@ export default function SalesPage() {
                         <TableRow className="bg-muted/50">
                           <TableHead>Item</TableHead>
                           <TableHead>Quantity</TableHead>
+                          <TableHead>Free Qty</TableHead>
                           <TableHead>Price</TableHead>
                           <TableHead>Discount (%)</TableHead>
                           <TableHead>Discounted Amount</TableHead>
@@ -2541,6 +2588,18 @@ export default function SalesPage() {
                                     setEditOrder({ ...editOrder, items: updatedItems })
                                   }}
                                 />
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {(() => {
+                                  const freeQty = calculateFreeIssueQty(item, item.qty)
+                                  return freeQty > 0 ? (
+                                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 font-semibold text-xs">
+                                      +{freeQty} Free
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">0</span>
+                                  )
+                                })()}
                               </TableCell>
                               <TableCell className="text-sm">
                                 LKR {Number(unitPrice ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

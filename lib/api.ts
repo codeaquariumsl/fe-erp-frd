@@ -335,6 +335,9 @@ export interface Item {
   allowsMinus: boolean
   isProductionRawMaterial: boolean
   isTaxInclusive: boolean
+  isFreeIssue?: boolean
+  freeIssuePerCount?: number
+  freeIssueCount?: number
   status: string
   createdAt: string
   createdBy: number
@@ -1312,6 +1315,7 @@ function transformSalesOrder(backendOrder: any): SalesOrder {
       item: item.Item,
       discount: item.discount,
       isTaxItem: item.isTaxItem,
+      freeIssueQty: item.freeIssueQty || 0,
       taxAmount: item.taxAmount,
       customerItemCode: item.customerItemCode
     })),
@@ -2475,6 +2479,7 @@ export interface SalesOrderItem {
   name?: string
   unit?: string
   isTaxItem: boolean
+  freeIssueQty?: number
   discountedAmount: number
   excludingTaxAmount: number
   total: number

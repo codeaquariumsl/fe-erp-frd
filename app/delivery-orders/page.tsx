@@ -2423,12 +2423,12 @@ export default function DeliveryOrdersPage() {
                               <div>
                                 <div className="font-semibold mb-2">Delivery Items</div>
                                 <div className="border rounded-lg">
-                                  <Table>
+                                  <Table className="text-xs">
                                     <TableHeader>
-                                      <TableRow className="bg-gray-50">
+                                      <TableRow className="bg-gray-100">
                                         <TableHead className="font-semibold">Item</TableHead>
                                         <TableHead className="font-semibold">Quantity</TableHead>
-                                        <TableHead className="font-semibold">Release Status</TableHead>
+                                        {/* <TableHead className="font-semibold">Release Status</TableHead> */}
                                         <TableHead className="font-semibold">Assigned Batch</TableHead>
                                         <TableHead className="font-semibold">Release Store</TableHead>
                                       </TableRow>
@@ -2443,14 +2443,14 @@ export default function DeliveryOrdersPage() {
 
                                           return (
                                             <TableRow key={idx} className="hover:bg-gray-50">
-                                              <TableCell className="font-medium">{item.Item?.name}</TableCell>
-                                              <TableCell>
+                                              <TableCell className="font-medium py-2">{item.Item?.name}</TableCell>
+                                              <TableCell className="py-2">
                                                 <div>
                                                   <span className="font-medium">{item.qty} {item.Item?.unit}</span><br />
                                                   <span className="text-xs text-muted-foreground">{selectedOrder?.status === "Finalized" || selectedOrder?.status === "Delivered" ? item.acceptedQty + ' ' + item.Item?.unit : ""}</span>
                                                 </div>
                                               </TableCell>
-                                              <TableCell>
+                                              {/* <TableCell className="py-2">
                                                 {summaryItems.length > 0 ? (
                                                   <div className="space-y-1">
                                                     {summaryItems.map((summary: any, summaryIdx: number) => (
@@ -2472,15 +2472,15 @@ export default function DeliveryOrdersPage() {
                                                     Not Assigned
                                                   </Badge>
                                                 )}
-                                              </TableCell>
-                                              <TableCell>
+                                              </TableCell> */}
+                                              <TableCell className="py-2">
                                                 {item?.Batch ? (
-                                                  <span className="font-medium">{item?.Batch?.batchNumber}</span>
+                                                  <span>{item?.Batch?.batchNumber}</span>
                                                 ) : (
                                                   <span className="text-gray-500 text-sm">No Batch assigned</span>
                                                 )}
                                               </TableCell>
-                                              <TableCell>
+                                              <TableCell className="py-2">
                                                 {item.storeId ? (
                                                   <div className="text-sm font-medium text-blue-600">
                                                     {item.ReleaseStore?.name || stores.find(s => s.id === item.storeId)?.name || 'Store not found'}

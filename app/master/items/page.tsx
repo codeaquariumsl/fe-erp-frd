@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { ERPLayout } from "@/components/layouts/erp-layout"
@@ -71,6 +71,9 @@ export default function ItemsPage() {
     allowsMinus: false,
     isProductionRawMaterial: false,
     isTaxInclusive: false,
+    isFreeIssue: false,
+    freeIssuePerCount: "0",
+    freeIssueCount: "0",
   })
 
   const [validationErrors, setValidationErrors] = useState<{
@@ -248,6 +251,9 @@ export default function ItemsPage() {
         reorderLevelQty: Number.parseInt(formData.reorderLevelQty),
         itemsPerBox: Number.parseInt(formData.itemsPerBox),
         leadTimeDays: Number.parseInt(formData.leadTimeDays),
+        isFreeIssue: formData.isFreeIssue,
+        freeIssuePerCount: formData.isFreeIssue ? Number.parseInt(formData.freeIssuePerCount || "0") : 0,
+        freeIssueCount: formData.isFreeIssue ? Number.parseInt(formData.freeIssueCount || "0") : 0,
       }
 
       await itemsApi.create(payload)
@@ -323,6 +329,9 @@ export default function ItemsPage() {
         reorderLevelQty: Number.parseInt(formData.reorderLevelQty),
         itemsPerBox: Number.parseInt(formData.itemsPerBox),
         leadTimeDays: Number.parseInt(formData.leadTimeDays),
+        isFreeIssue: formData.isFreeIssue,
+        freeIssuePerCount: formData.isFreeIssue ? Number.parseInt(formData.freeIssuePerCount || "0") : 0,
+        freeIssueCount: formData.isFreeIssue ? Number.parseInt(formData.freeIssueCount || "0") : 0,
       }
 
       await itemsApi.update(selectedItem.id, payload)
@@ -374,6 +383,9 @@ export default function ItemsPage() {
       allowsMinus: false,
       isProductionRawMaterial: false,
       isTaxInclusive: false,
+      isFreeIssue: false,
+      freeIssuePerCount: "0",
+      freeIssueCount: "0",
     })
     setValidationErrors({})
     setSelectedItem(null)
@@ -397,6 +409,9 @@ export default function ItemsPage() {
       allowsMinus: (item as any).allowsMinus || false,
       isProductionRawMaterial: (item as any).isProductionRawMaterial || false,
       isTaxInclusive: (item as any).isTaxInclusive || false,
+      isFreeIssue: (item as any).isFreeIssue || false,
+      freeIssuePerCount: (item as any).freeIssuePerCount?.toString() || "0",
+      freeIssueCount: (item as any).freeIssueCount?.toString() || "0",
     })
     setIsEditDialogOpen(true)
   }
@@ -700,6 +715,53 @@ export default function ItemsPage() {
                       <Label htmlFor="isTaxInclusive" className="text-sm">Is Tax Inclusive</Label>
                     </div>
                   </div>
+
+                  <div className="border-t pt-3 mt-1">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="isFreeIssue"
+                        checked={formData.isFreeIssue}
+                        onCheckedChange={(checked) =>
+                          setFormData({ ...formData, isFreeIssue: checked as boolean })
+                        }
+                      />
+                      <Label htmlFor="isFreeIssue" className="text-sm font-semibold text-purple-700 dark:text-purple-400">
+                        Mark as Free Issue Item
+                      </Label>
+                    </div>
+
+                    {formData.isFreeIssue && (
+                      <div className="grid grid-cols-2 gap-3 mt-3 p-3 bg-purple-50 dark:bg-purple-950/30 rounded-md border border-purple-200 dark:border-purple-800">
+                        <div className="grid gap-1">
+                          <Label htmlFor="freeIssuePerCount" className="text-xs font-medium">Per Count (Trigger Qty)</Label>
+                          <Input
+                            id="freeIssuePerCount"
+                            type="number"
+                            min="1"
+                            value={formData.freeIssuePerCount}
+                            onChange={(e) => setFormData({ ...formData, freeIssuePerCount: e.target.value })}
+                            placeholder="e.g. 10"
+                            className="h-8 bg-white dark:bg-gray-900"
+                          />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label htmlFor="freeIssueCount" className="text-xs font-medium">Free Issue Count</Label>
+                          <Input
+                            id="freeIssueCount"
+                            type="number"
+                            min="1"
+                            value={formData.freeIssueCount}
+                            onChange={(e) => setFormData({ ...formData, freeIssueCount: e.target.value })}
+                            placeholder="e.g. 3"
+                            className="h-8 bg-white dark:bg-gray-900"
+                          />
+                        </div>
+                        <p className="col-span-2 text-xs text-purple-700 dark:text-purple-300 font-medium">
+                          💡 Buy {formData.freeIssuePerCount || 0} items → Get {formData.freeIssueCount || 0} items FREE
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button
@@ -925,6 +987,11 @@ export default function ItemsPage() {
                           )}
                           {(item as any).isTaxInclusive && (
                             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">Tax Inclusive</Badge>
+                          )}
+                          {(item as any).isFreeIssue && (
+                            <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300">
+                              Free: Buy {(item as any).freeIssuePerCount || 0} → Get {(item as any).freeIssueCount || 0}
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
@@ -1230,6 +1297,53 @@ export default function ItemsPage() {
                   <Label htmlFor="edit-isTaxInclusive">Is Tax Inclusive</Label>
                 </div>
               </div>
+
+              <div className="border-t pt-3 mt-1">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-isFreeIssue"
+                    checked={formData.isFreeIssue}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isFreeIssue: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="edit-isFreeIssue" className="font-semibold text-purple-700 dark:text-purple-400">
+                    Mark as Free Issue Item
+                  </Label>
+                </div>
+
+                {formData.isFreeIssue && (
+                  <div className="grid grid-cols-2 gap-4 mt-3 p-3 bg-purple-50 dark:bg-purple-950/30 rounded-md border border-purple-200 dark:border-purple-800">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-freeIssuePerCount" className="text-sm font-medium">Per Count (Trigger Qty)</Label>
+                      <Input
+                        id="edit-freeIssuePerCount"
+                        type="number"
+                        min="1"
+                        value={formData.freeIssuePerCount}
+                        onChange={(e) => setFormData({ ...formData, freeIssuePerCount: e.target.value })}
+                        placeholder="e.g. 10"
+                        className="bg-white dark:bg-gray-900"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-freeIssueCount" className="text-sm font-medium">Free Issue Count</Label>
+                      <Input
+                        id="edit-freeIssueCount"
+                        type="number"
+                        min="1"
+                        value={formData.freeIssueCount}
+                        onChange={(e) => setFormData({ ...formData, freeIssueCount: e.target.value })}
+                        placeholder="e.g. 3"
+                        className="bg-white dark:bg-gray-900"
+                      />
+                    </div>
+                    <p className="col-span-2 text-xs text-purple-700 dark:text-purple-300 font-medium">
+                      💡 Buy {formData.freeIssuePerCount || 0} items → Get {formData.freeIssueCount || 0} items FREE
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button
@@ -1328,6 +1442,16 @@ export default function ItemsPage() {
                     <p className="text-sm text-muted-foreground">
                       {(viewItem as any).leadTimeDays ? `${(viewItem as any).leadTimeDays} days` : 'N/A'}
                     </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Free Issue</Label><br />
+                    {(viewItem as any).isFreeIssue ? (
+                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300">
+                        Buy {(viewItem as any).freeIssuePerCount || 0} → Get {(viewItem as any).freeIssueCount || 0} Free
+                      </Badge>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Disabled</p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Image</Label>
