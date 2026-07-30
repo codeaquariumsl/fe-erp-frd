@@ -1762,6 +1762,14 @@ export const usersApi = {
       method: "DELETE",
     })
   },
+
+  /** POST /users/transfer-customers - Transfer assigned customers from one sales person to another */
+  async transferCustomers(fromUserId: number, toUserId: number, customerIds: number[]): Promise<any> {
+    return apiRequest('/users/transfer-customers', {
+      method: "POST",
+      body: JSON.stringify({ fromUserId, toUserId, customerIds }),
+    })
+  },
 }
 
 /* -------------------------------------------------------------------------- */

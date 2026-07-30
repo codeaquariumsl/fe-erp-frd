@@ -56,6 +56,7 @@ import {
   Wallet,
   Droplets,
   Leaf,
+  ArrowRightLeft,
 } from "lucide-react"
 
 interface NavigationItem {
@@ -281,6 +282,12 @@ const navigation: NavigationItem[] = [
         name: "Assign Customers",
         href: "/master/assign-customers",
         icon: Users,
+        permissions: ["users:view"],
+      },
+      {
+        name: "Transfer Customers",
+        href: "/master/transfer-customers",
+        icon: ArrowRightLeft,
         permissions: ["users:view"],
       },
       {
