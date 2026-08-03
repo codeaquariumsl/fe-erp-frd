@@ -74,6 +74,9 @@ interface CustomerFormData {
   latitude: string
   longitude: string
   paymentMethod: string
+  isHighPotential: boolean
+  customerInterest: string
+  notInterestedReason: string
 }
 
 export default function CustomersPage() {
@@ -109,6 +112,9 @@ export default function CustomersPage() {
     latitude: "",
     longitude: "",
     paymentMethod: "Cash on delivery",
+    isHighPotential: false,
+    customerInterest: "",
+    notInterestedReason: "",
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
@@ -373,6 +379,7 @@ export default function CustomersPage() {
         parentId: formData.parentId || null,
         latitude: formData.latitude.trim() !== "" && !isNaN(Number(formData.latitude)) ? Number(formData.latitude) : null,
         longitude: formData.longitude.trim() !== "" && !isNaN(Number(formData.longitude)) ? Number(formData.longitude) : null,
+        notInterestedReason: formData.customerInterest === "Is not interested (record reason)" ? formData.notInterestedReason : "",
       }
 
       await customersApi.create(payload)
@@ -407,6 +414,9 @@ export default function CustomersPage() {
         discountRate: formData.discountRate,
         latitude: formData.latitude.trim() !== "" && !isNaN(Number(formData.latitude)) ? Number(formData.latitude) : null,
         longitude: formData.longitude.trim() !== "" && !isNaN(Number(formData.longitude)) ? Number(formData.longitude) : null,
+        isHighPotential: formData.isHighPotential,
+        customerInterest: formData.customerInterest,
+        notInterestedReason: formData.customerInterest === "Is not interested (record reason)" ? formData.notInterestedReason : "",
       }
 
       // Add optional fields for non-walk-in customers
@@ -449,24 +459,27 @@ export default function CustomersPage() {
   const openEditDialog = (customer: Customer) => {
     setEditingCustomer(customer)
     setFormData({
-      name: customer.name,
-      type: customer.type,
+      name: customer.name || "",
+      type: customer.type || "Supermarket",
       parentId: customer.parentId,
-      address: customer.address,
-      contactPerson: customer.contactPerson,
-      contactNumber: customer.contactNumber,
+      address: customer.address || "",
+      contactPerson: customer.contactPerson || "",
+      contactNumber: customer.contactNumber || "",
       contactNumber2: (customer as any).contactNumber2 || "",
-      email: customer.email,
+      email: customer.email || "",
       creditLimit: (customer as any).creditLimit || 0,
       paymentMethod: (customer as any).paymentMethod || "Cash on delivery",
       creditPeriod: (customer as any).creditPeriod || 30,
       discountRate: (customer as any).discountRate || 0,
-      status: customer.status,
-      routeId: (customer as any).routes.length > 0 ? (customer as any).routes[0].id : null,
+      status: customer.status || "active",
+      routeId: (customer as any).routes && (customer as any).routes.length > 0 ? (customer as any).routes[0].id : null,
       isTaxInclusive: (customer as any).isTaxInclusive || false,
       taxNumber: (customer as any).taxNumber || "",
       latitude: customer.latitude?.toString() || "",
       longitude: customer.longitude?.toString() || "",
+      isHighPotential: customer.isHighPotential || false,
+      customerInterest: customer.customerInterest || "",
+      notInterestedReason: customer.notInterestedReason || "",
     })
     setFormErrors({})
     setValidationErrors({})
@@ -530,6 +543,9 @@ export default function CustomersPage() {
       taxNumber: "",
       latitude: "",
       longitude: "",
+      isHighPotential: false,
+      customerInterest: "",
+      notInterestedReason: "",
     })
     setFormErrors({})
     setValidationErrors({})
@@ -1035,21 +1051,59 @@ export default function CustomersPage() {
                     />
                   </div>
                 </div>
+                {/* Potential & Interest Section */}
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-3 bg-zinc-50/50 dark:bg-zinc-900/50">
+                  <div className="font-semibold text-xs text-primary">Customer Potential & Interest</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                    <div>
+                      <Label htmlFor="customerInterest" className="text-xs">Customer Interest Status</Label>
+                      <Select
+                        value={formData.customerInterest || "none"}
+                        onValueChange={(val) => setFormData({ ...formData, customerInterest: val === "none" ? "" : val })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Customer Interest" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Not Specified</SelectItem>
+                          <SelectItem value="Wants more information">Wants more information</SelectItem>
+                          <SelectItem value="Wants a sample">Wants a sample</SelectItem>
+                          <SelectItem value="Is interested in placing an order">Is interested in placing an order</SelectItem>
+                          <SelectItem value="Wants to discuss later">Wants to discuss later</SelectItem>
+                          <SelectItem value="Is not interested (record reason)">Is not interested (record reason)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center space-x-2 pt-6">
+                      <Checkbox
+                        id="isHighPotential"
+                        checked={formData.isHighPotential}
+                        onCheckedChange={(checked) =>
+                          setFormData({ ...formData, isHighPotential: checked as boolean })
+                        }
+                      />
+                      <Label htmlFor="isHighPotential" className="text-xs cursor-pointer font-medium">
+                        High Potential Customer (Yes)
+                      </Label>
+                    </div>
+                  </div>
+
+                  {formData.customerInterest === "Is not interested (record reason)" && (
+                    <div>
+                      <Label htmlFor="notInterestedReason" className="text-xs">Reason for Not Interested <span className="text-red-500">*</span></Label>
+                      <Textarea
+                        id="notInterestedReason"
+                        placeholder="Enter reason why the customer is not interested..."
+                        value={formData.notInterestedReason}
+                        onChange={(e) => setFormData({ ...formData, notInterestedReason: e.target.value })}
+                        className="text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-3 gap-4">
-                  {/* <div>
-                    <Label htmlFor="discountRate">Discount Rate (%)</Label>
-                    <Input
-                      id="discountRate"
-                      type="number"
-                      placeholder="0"
-                      value={formData.discountRate}
-                      onChange={(e) => setFormData({ ...formData, discountRate: Number(e.target.value) })}
-                      className={formErrors.discountRate ? "border-red-500" : ""}
-                    />
-                    {formErrors.discountRate && (
-                      <div className="text-xs text-red-600 mt-1">{formErrors.discountRate}</div>
-                    )}
-                  </div> */}
                   <div className="grid grid-rows-2">
                     <div className="flex items-center space-x-2 mt-8">
                       <Checkbox
@@ -1325,8 +1379,20 @@ export default function CustomersPage() {
                   <TableRow key={customer.id} className="text-xs">
                     <TableCell className="py-2">
                       <div>
-                        <div className="font-medium text-xs">{customer.name}</div>
+                        <div className="font-medium text-xs flex items-center gap-1.5 flex-wrap">
+                          <span>{customer.name}</span>
+                          {customer.isHighPotential && (
+                            <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-[10px] py-0 px-1.5 h-4">
+                              High Potential
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">ID: {customer.id}</div>
+                        {customer.customerInterest && (
+                          <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium mt-0.5">
+                            Interest: {customer.customerInterest}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="py-2">
@@ -1503,6 +1569,24 @@ export default function CustomersPage() {
                       <div className="font-semibold text-base">{(viewCustomer as any).paymentMethod || "Cash on delivery"}</div>
                     </div>
                     <div>
+                      <div className="text-xs text-muted-foreground">High Potential Customer</div>
+                      <div className="font-semibold text-base">
+                        {viewCustomer.isHighPotential ? (
+                          <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white">Yes</Badge>
+                        ) : "No"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Customer Interest</div>
+                      <div className="font-semibold text-base">{viewCustomer.customerInterest || "Not Specified"}</div>
+                    </div>
+                    {viewCustomer.notInterestedReason && (
+                      <div className="sm:col-span-2">
+                        <div className="text-xs text-muted-foreground">Reason for Not Interested</div>
+                        <div className="font-semibold text-sm text-red-600 dark:text-red-400">{viewCustomer.notInterestedReason}</div>
+                      </div>
+                    )}
+                    <div>
                       <div className="text-xs text-muted-foreground">Tax Inclusive</div>
                       <div className="font-semibold text-base">
                         {(viewCustomer as any).isTaxInclusive ? "Yes" : "No"}
@@ -1610,7 +1694,7 @@ export default function CustomersPage() {
                   <Input
                     id="editCustomerName"
                     placeholder="Enter customer name"
-                    value={formData.name}
+                    value={formData.name || ""}
                     onChange={(e) => handleFormDataChange('name', e.target.value)}
                     className={formErrors.name || validationErrors.name ? "border-red-500" : ""}
                   />
@@ -1637,7 +1721,7 @@ export default function CustomersPage() {
                     id="editEmail"
                     type="email"
                     placeholder="customer@example.com"
-                    value={formData.email}
+                    value={formData.email || ""}
                     onChange={(e) => handleFormDataChange('email', e.target.value)}
                     className={formErrors.email || validationErrors.email ? "border-red-500" : ""}
                   />
@@ -1651,7 +1735,7 @@ export default function CustomersPage() {
                     <Input
                       id="editContactPerson"
                       placeholder="Enter contact person"
-                      value={formData.contactPerson}
+                      value={formData.contactPerson || ""}
                       onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
                       className={formErrors.contactPerson ? "border-red-500" : ""}
                     />
@@ -1665,7 +1749,7 @@ export default function CustomersPage() {
                   <Input
                     id="editContactNumber"
                     placeholder="+94 XX XXX XXXX"
-                    value={formData.contactNumber}
+                    value={formData.contactNumber || ""}
                     onChange={(e) => handleFormDataChange('contactNumber', e.target.value)}
                     className={formErrors.contactNumber || validationErrors.contactNumber ? "border-red-500" : ""}
                   />
@@ -1678,7 +1762,7 @@ export default function CustomersPage() {
                   <Input
                     id="editContactNumber2"
                     placeholder="+94 XX XXX XXXX"
-                    value={formData.contactNumber2}
+                    value={formData.contactNumber2 || ""}
                     onChange={(e) => handleFormDataChange('contactNumber2', e.target.value)}
                   />
                 </div>
@@ -1775,7 +1859,7 @@ export default function CustomersPage() {
                 <Textarea
                   id="editAddress"
                   placeholder="Enter full address"
-                  value={formData.address}
+                  value={formData.address || ""}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className={formErrors.address ? "border-red-500" : ""}
                 />
@@ -1789,7 +1873,7 @@ export default function CustomersPage() {
                   <Input
                     id="editLatitude"
                     placeholder="e.g. 6.9271"
-                    value={formData.latitude}
+                    value={formData.latitude || ""}
                     onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
                   />
                 </div>
@@ -1798,11 +1882,63 @@ export default function CustomersPage() {
                   <Input
                     id="editLongitude"
                     placeholder="e.g. 79.8612"
-                    value={formData.longitude}
+                    value={formData.longitude || ""}
                     onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
                   />
                 </div>
               </div>
+              {/* Potential & Interest Section */}
+              <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-3 bg-zinc-50/50 dark:bg-zinc-900/50">
+                <div className="font-semibold text-xs text-primary">Customer Potential & Interest</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                  <div>
+                    <Label htmlFor="editCustomerInterest" className="text-xs">Customer Interest Status</Label>
+                    <Select
+                      value={formData.customerInterest || "none"}
+                      onValueChange={(val) => setFormData({ ...formData, customerInterest: val === "none" ? "" : val })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Customer Interest" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Not Specified</SelectItem>
+                        <SelectItem value="Wants more information">Wants more information</SelectItem>
+                        <SelectItem value="Wants a sample">Wants a sample</SelectItem>
+                        <SelectItem value="Is interested in placing an order">Is interested in placing an order</SelectItem>
+                        <SelectItem value="Wants to discuss later">Wants to discuss later</SelectItem>
+                        <SelectItem value="Is not interested (record reason)">Is not interested (record reason)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2 pt-6">
+                    <Checkbox
+                      id="editIsHighPotential"
+                      checked={formData.isHighPotential}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, isHighPotential: checked as boolean })
+                      }
+                    />
+                    <Label htmlFor="editIsHighPotential" className="text-xs cursor-pointer font-medium">
+                      High Potential Customer (Yes)
+                    </Label>
+                  </div>
+                </div>
+
+                {formData.customerInterest === "Is not interested (record reason)" && (
+                  <div>
+                    <Label htmlFor="editNotInterestedReason" className="text-xs">Reason for Not Interested <span className="text-red-500">*</span></Label>
+                    <Textarea
+                      id="editNotInterestedReason"
+                      placeholder="Enter reason why the customer is not interested..."
+                      value={formData.notInterestedReason || ""}
+                      onChange={(e) => setFormData({ ...formData, notInterestedReason: e.target.value })}
+                      className="text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 {/* <div>
                   <Label htmlFor="editDiscountRate">Discount Rate (%)</Label>
@@ -1835,7 +1971,7 @@ export default function CustomersPage() {
                       <Input
                         id="editTaxNumber"
                         placeholder="Enter tax number"
-                        value={formData.taxNumber}
+                        value={formData.taxNumber || ""}
                         onChange={(e) => {
                           setFormData({ ...formData, taxNumber: e.target.value })
                           clearFieldError('taxNumber')

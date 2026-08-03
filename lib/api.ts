@@ -729,6 +729,9 @@ export interface Customer {
   CategoryDiscounts?: CategoryDiscount[]
   latitude?: number | null
   longitude?: number | null
+  isHighPotential?: boolean
+  customerInterest?: string | null
+  notInterestedReason?: string | null
 }
 
 // Credit Note Types
