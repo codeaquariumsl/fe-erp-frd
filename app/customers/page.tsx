@@ -88,6 +88,9 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [routeFilter, setRouteFilter] = useState<string>("all")
   const [parentFilter, setParentFilter] = useState<string>("all")
+  const [dateFromFilter, setDateFromFilter] = useState<string>("")
+  const [dateToFilter, setDateToFilter] = useState<string>("")
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
@@ -153,6 +156,9 @@ export default function CustomersPage() {
             setStatusFilter("all")
             setRouteFilter("all")
             setParentFilter("all")
+            setDateFromFilter("")
+            setDateToFilter("")
+            setSortOrder("newest")
             break
         }
       }
@@ -300,6 +306,7 @@ export default function CustomersPage() {
     // )
 
     // return existingCustomer ? 'A customer with this name already exists' : ''
+    return ''
   }
 
   const validateCustomerEmail = async (email: string) => {
@@ -552,7 +559,7 @@ export default function CustomersPage() {
   }
 
   const filteredCustomers = useMemo(() => {
-    return customers.filter((customer) => {
+    const filtered = customers.filter((customer) => {
       // Text search filter
       const matchesSearch =
         customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -582,9 +589,23 @@ export default function CustomersPage() {
         (parentFilter === "branch" && customer.parentId) ||
         (customer.parentId?.toString() === parentFilter)
 
-      return matchesSearch && matchesType && matchesStatus && matchesRoute && matchesParent
+      // Date range filter on createdAt
+      const createdDate = customer.createdAt ? new Date(customer.createdAt) : null
+      const matchesDateFrom = !dateFromFilter || (createdDate && createdDate >= new Date(dateFromFilter))
+      const matchesDateTo = !dateToFilter || (createdDate && createdDate <= new Date(dateToFilter + "T23:59:59"))
+
+      return matchesSearch && matchesType && matchesStatus && matchesRoute && matchesParent && matchesDateFrom && matchesDateTo
     })
-  }, [customers, searchTerm, typeFilter, statusFilter, routeFilter, parentFilter])
+
+    // Sort by createdAt
+    filtered.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB
+    })
+
+    return filtered
+  }, [customers, searchTerm, typeFilter, statusFilter, routeFilter, parentFilter, dateFromFilter, dateToFilter, sortOrder])
 
   const paginatedCustomers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
@@ -608,7 +629,7 @@ export default function CustomersPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, typeFilter, statusFilter, routeFilter, parentFilter])
+  }, [searchTerm, typeFilter, statusFilter, routeFilter, parentFilter, dateFromFilter, dateToFilter, sortOrder])
 
   // Pagination Component
   const PaginationControls = () => {
@@ -1275,7 +1296,7 @@ export default function CustomersPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={parentFilter} onValueChange={setParentFilter}>
+                {/* <Select value={parentFilter} onValueChange={setParentFilter}>
                   <SelectTrigger className="w-32 h-8">
                     <SelectValue placeholder="Filter by Parent" />
                   </SelectTrigger>
@@ -1288,6 +1309,39 @@ export default function CustomersPage() {
                         {customer.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select> */}
+
+                {/* Date From filter */}
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">From:</label>
+                  <input
+                    type="date"
+                    value={dateFromFilter}
+                    onChange={(e) => setDateFromFilter(e.target.value)}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+
+                {/* Date To filter */}
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">To:</label>
+                  <input
+                    type="date"
+                    value={dateToFilter}
+                    onChange={(e) => setDateToFilter(e.target.value)}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+
+                {/* Sort Order */}
+                <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as "newest" | "oldest")}>
+                  <SelectTrigger className="w-36 h-8">
+                    <SelectValue placeholder="Sort by Date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -1302,6 +1356,9 @@ export default function CustomersPage() {
                     setStatusFilter("all")
                     setRouteFilter("all")
                     setParentFilter("all")
+                    setDateFromFilter("")
+                    setDateToFilter("")
+                    setSortOrder("newest")
                   }}
                   title="Clear all filters (Ctrl+R)"
                 >
@@ -1320,8 +1377,8 @@ export default function CustomersPage() {
                 </span>
 
                 {/* Active Filters Display */}
-                {(searchTerm || typeFilter !== "all" || statusFilter !== "all" || routeFilter !== "all" || parentFilter !== "all") && (
-                  <div className="flex items-center gap-2">
+                {(searchTerm || typeFilter !== "all" || statusFilter !== "all" || routeFilter !== "all" || parentFilter !== "all" || dateFromFilter || dateToFilter) && (
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span>Filters:</span>
                     {searchTerm && (
                       <Badge variant="secondary" className="text-xs">
@@ -1348,6 +1405,16 @@ export default function CustomersPage() {
                         Parent: {parentFilter === "main" ? "Main Customers" : parentFilter === "branch" ? "Branch Customers" : customers.find(c => c.id.toString() === parentFilter)?.name || parentFilter}
                       </Badge>
                     )}
+                    {dateFromFilter && (
+                      <Badge variant="secondary" className="text-xs">
+                        From: {dateFromFilter}
+                      </Badge>
+                    )}
+                    {dateToFilter && (
+                      <Badge variant="secondary" className="text-xs">
+                        To: {dateToFilter}
+                      </Badge>
+                    )}
                   </div>
                 )}
               </div>
@@ -1364,11 +1431,18 @@ export default function CustomersPage() {
                 <TableRow>
                   <TableHead className="text-xs py-2">Customer</TableHead>
                   <TableHead className="text-xs py-2">Type</TableHead>
-                  <TableHead className="text-xs py-2">Parent</TableHead>
+                  {/* <TableHead className="text-xs py-2">Parent</TableHead> */}
                   <TableHead className="text-xs py-2">Route</TableHead>
                   <TableHead className="text-xs py-2">Contact</TableHead>
                   <TableHead className="text-xs py-2">Email</TableHead>
                   <TableHead className="text-xs py-2">Location</TableHead>
+                  <TableHead
+                    className="text-xs py-2 cursor-pointer select-none whitespace-nowrap hover:text-foreground"
+                    onClick={() => setSortOrder(sortOrder === "newest" ? "oldest" : "newest")}
+                    title={`Sort by Created At — currently ${sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
+                  >
+                    Created At {sortOrder === "newest" ? "↓" : "↑"}
+                  </TableHead>
                   {/* <TableHead>Delivery Time</TableHead> */}
                   {/* <TableHead>Status</TableHead> */}
                   <TableHead className="text-xs py-2">Actions</TableHead>
@@ -1401,7 +1475,7 @@ export default function CustomersPage() {
                         <span className="text-xs">{customer.type}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="py-2">
+                    {/* <TableCell className="py-2">
                       {customer.parentId ? (
                         <div className="text-xs">
                           {customers.find((c) => c.id === customer.parentId)?.name || `Parent ID: ${customer.parentId}`}
@@ -1409,7 +1483,7 @@ export default function CustomersPage() {
                       ) : (
                         <Badge variant="outline" className="text-xs py-0.5">Main</Badge>
                       )}
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell className="py-2">
                       {(customer as any).routes.length > 0 ? (
                         <div className="text-xs">
@@ -1453,6 +1527,16 @@ export default function CustomersPage() {
                         <span className="text-muted-foreground text-xs">Not Set</span>
                       )}
                     </TableCell>
+                    <TableCell className="py-2 whitespace-nowrap">
+                      {customer.createdAt ? (
+                        <div className="text-xs">
+                          <div>{new Date(customer.createdAt).toLocaleDateString()}</div>
+                          <div className="text-muted-foreground">{new Date(customer.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
                     {/* <TableCell>{customer.deliveryTime} h</TableCell> */}
                     {/* <TableCell>{getStatusBadge(customer.status)}</TableCell> */}
                     <TableCell className="py-2">
@@ -1472,7 +1556,7 @@ export default function CustomersPage() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="outline" size="sm" className="h-7 w-7 p-0">
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-3 w-3 text-red-600" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
