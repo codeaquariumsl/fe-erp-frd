@@ -732,6 +732,8 @@ export interface Customer {
   isHighPotential?: boolean
   customerInterest?: string | null
   notInterestedReason?: string | null
+  routeId?: number | null
+  route?: { id: number; routeName: string; city?: string }
 }
 
 // Credit Note Types

@@ -257,6 +257,10 @@ export default function CustomersPage() {
       } else if (formData.creditPeriod > 365) {
         errors.creditPeriod = "Credit period cannot exceed 365 days"
       }
+
+      if (formData.routeId === null) {
+        errors.routeId = "Assigned route is required"
+      }
     }
 
     // Tax number validation if tax inclusive is enabled
@@ -479,7 +483,7 @@ export default function CustomersPage() {
       creditPeriod: (customer as any).creditPeriod || 30,
       discountRate: (customer as any).discountRate || 0,
       status: customer.status || "active",
-      routeId: (customer as any).routes && (customer as any).routes.length > 0 ? (customer as any).routes[0].id : null,
+      routeId: customer.routeId ?? ((customer as any).routes && (customer as any).routes.length > 0 ? (customer as any).routes[0].id : null),
       isTaxInclusive: (customer as any).isTaxInclusive || false,
       taxNumber: (customer as any).taxNumber || "",
       latitude: customer.latitude?.toString() || "",
@@ -575,12 +579,14 @@ export default function CustomersPage() {
       // Status filter
       const matchesStatus = statusFilter === "all" || customer.status === statusFilter
 
-      // Route filter
+      // Route filter — check customer.routeId (primary) and legacy routes array
+      const hasRoute = !!(customer.routeId || (customer as any).routes?.length)
+      const customerRouteId = customer.routeId || (customer as any).routes?.[0]?.id
       const matchesRoute =
         routeFilter === "all" ||
-        (routeFilter === "no-route" && !(customer as any).routes?.length) ||
-        (routeFilter === "has-route" && (customer as any).routes?.length > 0) ||
-        ((customer as any).routes?.some((route: any) => route.id.toString() === routeFilter))
+        (routeFilter === "no-route" && !hasRoute) ||
+        (routeFilter === "has-route" && hasRoute) ||
+        (customerRouteId?.toString() === routeFilter)
 
       // Parent filter
       const matchesParent =
@@ -955,7 +961,7 @@ export default function CustomersPage() {
                 {formData.type !== "Walk-in" && (
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <Label htmlFor="route">Assigned Route</Label>
+                      <Label htmlFor="route">Assigned Route <span className="text-red-500">*</span></Label>
                       <Select
                         value={formData.routeId?.toString() || "none"}
                         onValueChange={(value) =>
@@ -1485,16 +1491,17 @@ export default function CustomersPage() {
                       )}
                     </TableCell> */}
                     <TableCell className="py-2">
-                      {(customer as any).routes.length > 0 ? (
+                      {(customer.route || customer.routeId || ((customer as any).routes && (customer as any).routes.length > 0)) ? (
                         <div className="text-xs">
                           {(() => {
-                            const route = routes.find((r) => r.id === (customer as any).routes[0].id)
+                            const rId = customer.routeId || (customer.route ? customer.route.id : ((customer as any).routes && (customer as any).routes[0]?.id))
+                            const route = customer.route || routes.find((r) => r.id === rId)
                             return route ? (
                               <div>
                                 <div className="font-medium text-xs">{route.routeName}</div>
-                                <div className="text-xs text-muted-foreground">{route.city}</div>
+                                {route.city && <div className="text-xs text-muted-foreground">{route.city}</div>}
                               </div>
-                            ) : `Route ID: ${(customer as any).routeId}`
+                            ) : `Route ID: ${rId}`
                           })()}
                         </div>
                       ) : (

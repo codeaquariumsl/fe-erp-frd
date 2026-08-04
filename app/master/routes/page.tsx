@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import type React from "react"
 
@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Search, MoreHorizontal, Route, MapPin, Clock, Loader2, AlertCircle, Eye, Truck, Edit, Trash2, Calendar } from "lucide-react"
-import { routesApi, vehiclesApi, driversApi, customersApi, type Vehicle, type Driver, type Customer } from "@/lib/api"
+import { routesApi, vehiclesApi, driversApi, customersApi, usersApi, type Vehicle, type Driver, type Customer, type User } from "@/lib/api"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { ERPLayout } from "@/components/layouts/erp-layout"
@@ -24,8 +24,10 @@ import { toast } from "@/hooks/use-toast"
 interface RouteData {
   driver: any
   vehicle: any
+  salesPerson?: any
   vehicleId: string
   driverId: string
+  salesPersonId?: string
   id: number
   routeName: string
   description: string
@@ -68,6 +70,7 @@ export default function RoutesPage() {
     vehicleIds: [] as number[],
     vehicleId: "",
     driverId: "",
+    salesPersonId: "",
     customerIds: [] as number[],
     days: [] as string[],
   })
@@ -75,10 +78,11 @@ export default function RoutesPage() {
   // Validation errors state
   const [validationErrors, setValidationErrors] = useState<string[]>([])
 
-  // Vehicles and Drivers
+  // Vehicles, Drivers, Customers, Sales Persons
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [salesPersons, setSalesPersons] = useState<User[]>([])
   const [customerSearchTerm, setCustomerSearchTerm] = useState("")
 
   useEffect(() => {
@@ -86,7 +90,17 @@ export default function RoutesPage() {
     loadVehicles()
     loadDrivers()
     loadCustomers()
+    loadSalesPersons()
   }, [])
+
+  const loadSalesPersons = async () => {
+    try {
+      const data = await usersApi.getSalesPersons()
+      setSalesPersons(data)
+    } catch (err) {
+      // ignore
+    }
+  }
 
   const loadVehicles = async () => {
     try {
@@ -179,6 +193,7 @@ export default function RoutesPage() {
         ...formData,
         vehicleId: formData.vehicleId || undefined,
         driverId: formData.driverId || undefined,
+        salesPersonId: formData.salesPersonId || undefined,
       }
 
       if (editingRoute) {
@@ -209,6 +224,7 @@ export default function RoutesPage() {
         vehicleIds: [],
         vehicleId: "",
         driverId: "",
+        salesPersonId: "",
         customerIds: [],
         days: [],
       })
@@ -258,6 +274,7 @@ export default function RoutesPage() {
       status: route.status,
       driverId: String(route.driverId || ""),
       vehicleId: String(route.vehicleId || ""),
+      salesPersonId: String(route.salesPersonId || ""),
       vehicleIds: route.vehicleIds || [],
       customerIds: route.customerIds || [],
       days: route.days || [],
@@ -347,6 +364,7 @@ export default function RoutesPage() {
                     status: "active",
                     vehicleId: "",
                     driverId: "",
+                    salesPersonId: "",
                     vehicleIds: [],
                     customerIds: [],
                     days: [],
@@ -383,8 +401,6 @@ export default function RoutesPage() {
                       )}
                     </div>
 
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="city">City *</Label>
                       <Select
@@ -400,7 +416,6 @@ export default function RoutesPage() {
                           <SelectValue placeholder="Select city" />
                         </SelectTrigger>
                         <SelectContent>
-                          {/* <SelectItem value="__all__">Select city</SelectItem> */}
                           <SelectItem value="Colombo">Colombo</SelectItem>
                           <SelectItem value="Kandy">Kandy</SelectItem>
                           <SelectItem value="Galle">Galle</SelectItem>
@@ -450,7 +465,6 @@ export default function RoutesPage() {
                           <SelectValue placeholder="Select vehicle" />
                         </SelectTrigger>
                         <SelectContent>
-                          {/* <SelectItem value="__all__">Select vehicle</SelectItem> */}
                           {vehicles.map((v) => (
                             <SelectItem key={v.id} value={String(v.id)}>
                               {v.vehicleNumber} - {v.vehicleType}
@@ -477,7 +491,6 @@ export default function RoutesPage() {
                           <SelectValue placeholder="Select driver" />
                         </SelectTrigger>
                         <SelectContent>
-                          {/* <SelectItem value="__all__">Select driver</SelectItem> */}
                           {drivers.map((d) => (
                             <SelectItem key={d.id} value={String(d.id)}>
                               {d.name} ({d.mobile})
@@ -488,6 +501,27 @@ export default function RoutesPage() {
                       {hasValidationError("driver") && (
                         <p className="text-sm text-red-500 mt-1">Driver is required</p>
                       )}
+                    </div>
+                    <div>
+                      <Label htmlFor="salesPersonId">Sales Person</Label>
+                      <Select
+                        value={formData.salesPersonId}
+                        onValueChange={(value) => {
+                          setFormData({ ...formData, salesPersonId: value })
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select sales person" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {salesPersons.map((sp) => (
+                            <SelectItem key={sp.id} value={String(sp.id)}>
+                              {sp.fullName || sp.username} {sp.mobile ? `(${sp.mobile})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -867,18 +901,17 @@ export default function RoutesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
+            <Table className="text-xs">
+              <TableHeader className="bg-gray-100">
                 <TableRow>
                   <TableHead>Route Name</TableHead>
-                  <TableHead>City</TableHead>
                   <TableHead>Start - End</TableHead>
                   <TableHead>Distance</TableHead>
                   <TableHead>Est. Time</TableHead>
-                  <TableHead>Vehicle</TableHead>
+                  <TableHead>Vehicle & Driver</TableHead>
+                  <TableHead>Sales Person</TableHead>
                   <TableHead>Delivery Days</TableHead>
                   <TableHead>Customers</TableHead>
-                  {/* <TableHead>Status</TableHead> */}
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -890,7 +923,7 @@ export default function RoutesPage() {
                         <Route className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <div className="font-medium">{route.routeName}</div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-xs text-muted-foreground">
                             {route.description.length > 30
                               ? `${route.description.substring(0, 30)}...`
                               : route.description}
@@ -898,9 +931,8 @@ export default function RoutesPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{route.city}</TableCell>
                     <TableCell>
-                      <div className="text-sm">
+                      <div className="text-xs">
                         <span className="font-medium">{route.startPoint}</span>
                         <span className="mx-2 text-muted-foreground">→</span>
                         <span className="font-medium">{route.endPoint}</span>
@@ -924,9 +956,19 @@ export default function RoutesPage() {
                           <Truck className="h-3 w-3 text-muted-foreground" />
                           {route.vehicle?.vehicleNumber || route.vehicleId || "Unassigned"}
                         </div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           {route.driver?.name || "No driver assigned"}
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium text-xs">
+                          {route.salesPerson?.fullName || route.salesPerson?.username || "Unassigned"}
+                        </div>
+                        {route.salesPerson?.mobile && (
+                          <div className="text-xs text-muted-foreground">{route.salesPerson.mobile}</div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -938,15 +980,22 @@ export default function RoutesPage() {
                             </Badge>
                           ))
                         ) : (
-                          <span className="text-sm text-muted-foreground">No days set</span>
+                          <span className="text-xs text-muted-foreground">No days set</span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium">{route.customerIds?.length || 0}</span>
-                        <span className="text-xs text-muted-foreground">customers</span>
-                      </div>
+                      {(() => {
+                        const cnt = route.customers?.length ?? route.customerIds?.length ?? 0
+                        return (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-medium">{cnt}</span>
+                            {cnt > 0 && (
+                              <span className="text-xs text-muted-foreground">customer{cnt > 1 ? 's' : ''}</span>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </TableCell>
                     {/* <TableCell>{getStatusBadge(route.status)}</TableCell> */}
                     <TableCell>
@@ -962,7 +1011,7 @@ export default function RoutesPage() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="outline" size="sm">
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4 text-red-600" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -994,20 +1043,20 @@ export default function RoutesPage() {
               <DialogTitle>Route Details</DialogTitle>
             </DialogHeader>
             {viewingRoute && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-3">
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Route Name</Label>
-                    <p className="text-lg font-semibold">{viewingRoute.routeName}</p>
+                    <p className="text-md font-semibold">{viewingRoute.routeName}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">City</Label>
-                    <p className="text-lg">{viewingRoute.city}</p>
+                    <p className="text-md">{viewingRoute.city}</p>
                   </div>
 
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Vehicle</Label>
-                    <p className="text-lg font-bold">
+                    <p className="text-md font-bold">
                       {viewingRoute.vehicle?.vehicleNumber
                         ? `${viewingRoute.vehicle.vehicleNumber} - ${viewingRoute.vehicle.vehicleType}`
                         : viewingRoute.vehicleId
@@ -1016,13 +1065,23 @@ export default function RoutesPage() {
                     </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground mt-2">Driver</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">Driver</Label>
                     <p className="text-sm font-bold">
                       {viewingRoute.driver?.name
                         ? `${viewingRoute.driver.name} (${viewingRoute.driver.mobile})`
                         : viewingRoute.driverId
                           ? `Driver #${viewingRoute.driverId}`
                           : "No driver assigned"}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Sales Person</Label>
+                    <p className="text-sm font-bold">
+                      {viewingRoute.salesPerson?.fullName
+                        ? `${viewingRoute.salesPerson.fullName} (${viewingRoute.salesPerson.username})`
+                        : viewingRoute.salesPersonId
+                          ? `Sales Person #${viewingRoute.salesPersonId}`
+                          : "Unassigned"}
                     </p>
                   </div>
                 </div>
