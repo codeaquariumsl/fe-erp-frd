@@ -586,7 +586,7 @@ export default function InvoicesPage() {
         }
 
         // Right Header
-        const title = invoice.isTaxInvoice ? "TAX Invoice" : "Invoice"
+        const title = invoice.isTaxInvoice ? "TAX Invoice" : "Tax Invoice"
         doc.setFont("helvetica", "normal")
         doc.setFontSize(26)
         doc.setTextColor(0, 0, 0)

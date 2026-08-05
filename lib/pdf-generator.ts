@@ -1,4 +1,4 @@
-﻿import jsPDF from 'jspdf';
+import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 
@@ -514,156 +514,188 @@ export const generateReceiptPDF = (receipt: any) => {
   const margin = 15;
 
   // Helper: Right align text
-  const rightText = (text: string, y: number, x: number = pageWidth - margin) => {
-    doc.text(text, x, y, { align: "right" });
+  const rightText = (text: string, y: number, x: number = pageWidth - margin, options: any = {}) => {
+    doc.text(text, x, y, { align: "right", ...options });
   };
 
-  // 1. Header Section
+  const totalPaid = receipt.totalPaid || 0;
   let yPos = 20;
 
-  // Logo - Code Aqua ERP
+  // 1. Header Section
+  // Logo
   try {
-    doc.addImage("/assets/bighill_logo.png", "PNG", margin, yPos - 10, 40, 35);
+    doc.setFillColor(253, 203, 88); // Yellowish circle
+    doc.circle(margin + 15, yPos + 5, 15, "F");
+    doc.addImage("/assets/fruit_easy_logo.png", "PNG", margin, yPos - 10, 30, 30);
   } catch (e) {
     console.error("Failed to add logo to PDF:", e);
-    doc.setTextColor(76, 175, 80);
-    doc.setFontSize(22);
+    doc.setFillColor(253, 203, 88);
+    doc.circle(margin + 15, yPos + 5, 15, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("Code Aqua", margin, yPos + 10);
+    doc.text("fe", margin + 10, yPos + 2);
+    doc.setFontSize(8);
+    doc.text("FRUIT", margin + 8, yPos + 6);
+    doc.text("eazy", margin + 9, yPos + 10);
   }
 
-  // Company Details
-  doc.setTextColor(60, 60, 60);
+  // Right Header
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(26);
+  doc.setTextColor(0, 0, 0);
+  rightText("Official Receipt", yPos);
+
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  rightText(`# ${receipt.receiptNo || "-"}`, yPos);
+
+  yPos += 12;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  rightText("Amount Paid", yPos);
+
+  yPos += 6;
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  const companyX = margin + 50;
-  doc.text("Code Aqua ERP Solutions", companyX, yPos);
+  doc.setTextColor(0, 0, 0);
+  rightText(`LKR${Number(totalPaid).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos);
+
+  // Company Details (Left)
+  yPos = 50;
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("Fruit Eazy", margin, yPos);
 
   yPos += 5;
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("4th Floor, Forbes & Walkers Building,", companyX, yPos);
-  yPos += 4;
-  doc.text("38/46 Nawam Mawatha,", companyX, yPos);
-  yPos += 4;
-  doc.text("Colombo 00200", companyX, yPos);
-  yPos += 4;
-  doc.text("VAT: 102861841 7000", companyX, yPos);
-  yPos += 4;
-  doc.text("Contact: 072 796 6966", companyX, yPos);
-
-  // Title (Right)
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
   doc.setTextColor(80, 80, 80);
-  rightText("OFFICIAL RECEIPT", yPos - 12);
-
-  yPos += 15;
-
-  // 2. Customer Info
-  const boxTop = yPos;
-
-  doc.setFillColor(240, 245, 250);
-  doc.rect(margin, yPos, 85, 6, 'F');
-
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(100, 100, 100);
-  doc.text("RECEIVED FROM", margin + 2, yPos + 4);
+  doc.text("No. 358,", margin, yPos);
+  yPos += 4;
+  doc.text("Jana Jaya City Mall,", margin, yPos);
+  yPos += 4;
+  doc.text("Rajagiriya Western Province", margin, yPos);
+  yPos += 4;
+  doc.text("SriLanka", margin, yPos);
+  yPos += 4;
+  doc.text("0744118869", margin, yPos);
+  yPos += 4;
+  doc.text("office@ceyloncarb.com", margin, yPos);
 
   yPos += 10;
-  doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
 
+  // 2. Bill To & Info Section
+  const billToY = yPos;
+
+  // Received From
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 0, 0);
+  doc.text("Received From", margin, yPos);
+
+  let leftY = yPos + 5;
   const customer = receipt.customer || {};
   const customerName = customer.name || receipt.customerName || "-";
-  const customerAddress = customer.address || "-";
-  const customerContact = customer.contactNumber || "-";
+  const customerAddress = customer.address || "";
+  const customerContact = customer.contactNumber || "";
 
-  doc.text(customerName, margin, yPos);
-  yPos += 5;
-  const addressLines = doc.splitTextToSize(String(customerAddress), 80);
-  doc.text(addressLines, margin, yPos);
-  yPos += (addressLines.length * 4);
-  doc.text(String(customerContact), margin, yPos);
-
-  yPos = Math.max(yPos, boxTop + 25) + 5;
-
-  // 3. Info Strip
-  doc.setFillColor(235, 240, 245);
-  doc.rect(margin, yPos, pageWidth - (margin * 2), 12, 'F');
-
-  const infoHeaders = ["RECEIPT NO.", "DATE", "TOTAL PAID", "STATUS"];
-  const startX = margin + 5;
-  const gap = (pageWidth - (margin * 2)) / 4;
-
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(100, 100, 100);
-
-  infoHeaders.forEach((h, i) => {
-    doc.text(h, startX + (i * gap), yPos + 4);
-  });
-
-  // Values
-  const infoValues = [
-    receipt.receiptNo || "-",
-    receipt.receiptDate ? format(new Date(receipt.receiptDate), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy"),
-    `LKR ${receipt.totalPaid?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}`,
-    "COMPLETED"
-  ];
-
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(0, 0, 0);
-  infoValues.forEach((v, i) => {
-    doc.text(String(v), startX + (i * gap), yPos + 9);
-  });
-
-  yPos += 20;
-
-  // 4. Invoices Table
-  if (receipt.invoices && receipt.invoices.length > 0) {
+  if (customerName) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text("INVOICES PAID", margin, yPos);
+    doc.text(customerName, margin, leftY);
+    leftY += 5;
+
+    doc.setFont("helvetica", "normal");
+    if (customerAddress) {
+      const addressLines = doc.splitTextToSize(customerAddress, 80);
+      doc.text(addressLines, margin, leftY);
+      leftY += (addressLines.length * 5);
+    }
+    if (customerContact) {
+      doc.text(customerContact, margin, leftY);
+      leftY += 5;
+    }
+  }
+
+  // Info Details (Right)
+  let rightY = billToY;
+  const labelX = pageWidth - margin - 40;
+  const valueX = pageWidth - margin;
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(80, 80, 80);
+
+  const receiptDate = receipt.receiptDate ? format(new Date(receipt.receiptDate), "dd MMM yyyy") : format(new Date(), "dd MMM yyyy");
+
+  doc.text("Receipt Date :", labelX, rightY, { align: "right" });
+  rightText(receiptDate, rightY, valueX);
+
+  rightY += 6;
+  doc.text("Receipt No :", labelX, rightY, { align: "right" });
+  rightText(receipt.receiptNo || "-", rightY, valueX);
+
+  rightY += 6;
+  doc.text("Status :", labelX, rightY, { align: "right" });
+  rightText("COMPLETED", rightY, valueX);
+
+  yPos = Math.max(leftY, rightY) + 8;
+
+  // 3. Invoices Table
+  if (receipt.invoices && receipt.invoices.length > 0) {
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Invoices Paid", margin, yPos);
     yPos += 5;
 
-    doc.setFillColor(240, 245, 250);
+    doc.setFillColor(60, 60, 60);
     doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
 
     const invCols = [
-      { label: "INVOICE #", x: margin + 5, align: "left" },
-      { label: "INVOICE TOTAL", x: margin + 60, align: "right" },
-      { label: "PAID AMOUNT", x: margin + 110, align: "right" },
-      { label: "BALANCE", x: pageWidth - margin - 5, align: "right" },
+      { label: "#", x: margin + 5, align: "center" },
+      { label: "Invoice #", x: margin + 15, align: "left" },
+      { label: "Invoice Total", x: pageWidth - margin - 80, align: "right" },
+      { label: "Paid Amount", x: pageWidth - margin - 45, align: "right" },
+      { label: "Balance", x: pageWidth - margin - 5, align: "right" },
     ];
 
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(255, 255, 255);
+
     invCols.forEach(c => {
-      doc.text(c.label, c.x, yPos + 5, { align: c.align as any });
+      doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" | "center" });
     });
 
     yPos += 12;
     doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
 
-    receipt.invoices.forEach((inv: any) => {
+    receipt.invoices.forEach((inv: any, index: number) => {
       const invNo = inv.invoice?.invoiceNumber || `Invoice ${inv.invoiceId}`;
       const invTotal = inv.invoiceAmount || 0;
       const paidAmt = inv.paidAmount || 0;
       const balance = inv.balanceAmount || 0;
 
-      doc.text(invNo, invCols[0].x, yPos);
-      doc.text(invTotal.toLocaleString('en-US', { minimumFractionDigits: 2 }), invCols[1].x, yPos, { align: "right" });
-      doc.text(paidAmt.toLocaleString('en-US', { minimumFractionDigits: 2 }), invCols[2].x, yPos, { align: "right" });
-      doc.text(balance.toLocaleString('en-US', { minimumFractionDigits: 2 }), invCols[3].x, yPos, { align: "right" });
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
 
-      yPos += 7;
-      if (yPos > pageHeight - 40) {
+      doc.text((index + 1).toString(), invCols[0].x, yPos, { align: "center" });
+      doc.text(invNo, invCols[1].x, yPos);
+      doc.text(Number(invTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), invCols[2].x, yPos, { align: "right" });
+      doc.text(Number(paidAmt).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), invCols[3].x, yPos, { align: "right" });
+      doc.text(Number(balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), invCols[4].x, yPos, { align: "right" });
+
+      yPos += 2;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 4;
+
+      if (yPos > pageHeight - 60) {
         doc.addPage();
         yPos = 20;
       }
@@ -671,51 +703,59 @@ export const generateReceiptPDF = (receipt: any) => {
     yPos += 5;
   }
 
-  // 5. Payment Details
+  // 4. Payment Details Table
   if (receipt.payments && receipt.payments.length > 0) {
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text("PAYMENT METHODS", margin, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Payment Methods", margin, yPos);
     yPos += 5;
 
-    doc.setFillColor(240, 245, 250);
+    doc.setFillColor(60, 60, 60);
     doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
 
     const payCols = [
-      { label: "METHOD", x: margin + 5, align: "left" },
-      { label: "REFERENCE", x: margin + 60, align: "left" },
-      { label: "BANK / DETAILS", x: margin + 110, align: "left" },
-      { label: "AMOUNT", x: pageWidth - margin - 5, align: "right" },
+      { label: "#", x: margin + 5, align: "center" },
+      { label: "Method", x: margin + 15, align: "left" },
+      { label: "Reference", x: margin + 60, align: "left" },
+      { label: "Bank / Details", x: margin + 110, align: "left" },
+      { label: "Amount", x: pageWidth - margin - 5, align: "right" },
     ];
 
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(255, 255, 255);
+
     payCols.forEach(c => {
-      doc.text(c.label, c.x, yPos + 5, { align: c.align as any });
+      doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" | "center" });
     });
 
     yPos += 12;
     doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
 
-    receipt.payments.forEach((p: any) => {
+    receipt.payments.forEach((p: any, index: number) => {
       const type = p.PaymentType?.paymentTypeName || p.paymentTypeName || "N/A";
       const reference = p.referenceNo || p.reference || "-";
       let details = p.bankName || "-";
       if (p.bankBranchName) details += ` (${p.bankBranchName})`;
       if (p.chequeNo) details = `Chq: ${p.chequeNo}`;
-
       const amount = p.paymentAmount || p.amount || 0;
 
-      doc.text(type, payCols[0].x, yPos);
-      doc.text(reference, payCols[1].x, yPos);
-      doc.text(details, payCols[2].x, yPos);
-      doc.text(amount.toLocaleString('en-US', { minimumFractionDigits: 2 }), payCols[3].x, yPos, { align: "right" });
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
 
-      yPos += 7;
-      if (yPos > pageHeight - 40) {
+      doc.text((index + 1).toString(), payCols[0].x, yPos, { align: "center" });
+      doc.text(type, payCols[1].x, yPos);
+      doc.text(reference, payCols[2].x, yPos);
+      doc.text(details, payCols[3].x, yPos);
+      doc.text(Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), payCols[4].x, yPos, { align: "right" });
+
+      yPos += 2;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 4;
+
+      if (yPos > pageHeight - 60) {
         doc.addPage();
         yPos = 20;
       }
@@ -723,45 +763,76 @@ export const generateReceiptPDF = (receipt: any) => {
     yPos += 5;
   }
 
-  // 6. Summary and Notes Footer
-  const footerY = Math.max(yPos, pageHeight - 80);
+  // 5. Totals Section
+  yPos += 5;
+  const totalLabelX = pageWidth - margin - 40;
+  const totalValueX = pageWidth - margin;
 
-  // Notes (Left side)
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(100, 100, 100);
-  doc.text("PAYMENT NOTES", margin, footerY);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0, 0, 0);
-  if (receipt.remarks) {
-    const remarksLines = doc.splitTextToSize(String(receipt.remarks), 100);
-    doc.text(remarksLines, margin, footerY + 5);
-  } else {
-    doc.text("Payment received with thanks.", margin, footerY + 5);
-  }
 
-  // Total Box (Right side)
-  const summaryX = pageWidth - margin - 80;
-  const valueX = pageWidth - margin - 5;
+  doc.text("Total Paid", totalLabelX, yPos, { align: "right" });
+  rightText(Number(totalPaid).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), yPos, totalValueX);
+  yPos += 8;
 
-  doc.setFillColor(235, 240, 245);
-  doc.rect(summaryX - 5, footerY, 80 + 5, 15, 'F');
+  // Balance / Amount Paid Box
+  doc.setFillColor(240, 240, 240);
+  doc.rect(pageWidth - margin - 90, yPos, 90, 10, 'F');
 
+  yPos += 6.5;
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL RECEIVED", summaryX, footerY + 10);
-  rightText(`LKR ${receipt.totalPaid?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}`, footerY + 10, valueX);
+  doc.text("Total Received", totalLabelX, yPos, { align: "right" });
+  rightText(`LKR${Number(totalPaid).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, totalValueX);
 
-  // Footer Branding
-  doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
+  yPos += 15;
+
+  // 6. Notes & Bank Details
+  const bottomSectionY = yPos;
+  if (bottomSectionY > pageHeight - 60) {
+    doc.addPage();
+    yPos = 20;
+  } else {
+    yPos = bottomSectionY;
+  }
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 0, 0);
+  doc.text("Notes", margin, yPos);
+
+  let notesY = yPos + 6;
   doc.setFont("helvetica", "normal");
-  doc.text(
-    `This is a computer-generated receipt. Generated on ${format(new Date(), 'PPP p')}`,
-    pageWidth / 2,
-    pageHeight - 10,
-    { align: 'center' }
-  );
+  doc.setTextColor(80, 80, 80);
+  if (receipt.remarks) {
+    const remarksLines = doc.splitTextToSize(String(receipt.remarks), 100);
+    doc.text(remarksLines, margin, notesY);
+    notesY += (remarksLines.length * 5);
+  } else {
+    doc.text("- Payment received with thanks.", margin, notesY);
+    notesY += 6;
+  }
+
+  notesY += 8;
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 0, 0);
+  doc.text("Bank Details", margin, notesY);
+
+  notesY += 6;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(80, 80, 80);
+  doc.text("Account Name : Ceylon Carb Private Limited", margin, notesY);
+  notesY += 5;
+  doc.text("Bank : National Development Bank (NDB)", margin, notesY);
+  notesY += 5;
+  doc.text("Bank Branch : Kohuwela", margin, notesY);
+  notesY += 5;
+  doc.text("Account Number : 111000305711", margin, notesY);
+
+  // Footer Line
+  doc.setDrawColor(220, 220, 220);
+  doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
 
   doc.save(`Receipt-${receipt.receiptNo || 'Draft'}.pdf`);
 };
