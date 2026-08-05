@@ -4,7 +4,7 @@ import * as XLSX from "xlsx"
 
 import { useEffect, useState, useMemo } from "react"
 // Customer filter state for sales orders
-import { salesOrdersApi, SalesOrder, SalesOrderItem, customersApi, Customer, timeSlotsApi, itemsApi, locationsApi, Location, usersApi, User, accountingReportsApi } from "@/lib/api"
+import { salesOrdersApi, SalesOrder, SalesOrderItem, customersApi, Customer, timeSlotsApi, itemsApi, locationsApi, Location, usersApi, User, accountingReportsApi, routesApi, Route } from "@/lib/api"
 
 // Extended Customer interface with routes
 interface CustomerWithRoutes extends Customer {
@@ -83,9 +83,11 @@ export default function SalesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [searchCustomerId, setSearchCustomerId] = useState("ALL")
   const [searchSalesPersonId, setSearchSalesPersonId] = useState("ALL")
+  const [searchRouteId, setSearchRouteId] = useState("ALL")
   const [searchIsTaxInvoice, setSearchIsTaxInvoice] = useState("ALL")
   const [searchStatus, setSearchStatus] = useState("ALL")
   const [searchDeliveryOrderStatus, setSearchDeliveryOrderStatus] = useState("ALL")
+  const [routes, setRoutes] = useState<Route[]>([])
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([])   // current page rows
   const [totalOrders, setTotalOrders] = useState(0)                   // server total count
   const [totalPages, setTotalPages] = useState(1)
@@ -156,6 +158,7 @@ export default function SalesPage() {
         search: searchTerm || undefined,
         customerId: searchCustomerId !== "ALL" ? searchCustomerId : undefined,
         salesPersonId: searchSalesPersonId !== "ALL" ? searchSalesPersonId : undefined,
+        routeId: searchRouteId !== "ALL" ? searchRouteId : undefined,
         isTaxInvoice: searchIsTaxInvoice !== "ALL" ? searchIsTaxInvoice : undefined,
         status: searchStatus !== "ALL" ? searchStatus : undefined,
         deliveryOrderStatus: searchDeliveryOrderStatus !== "ALL" ? searchDeliveryOrderStatus : undefined,
@@ -181,7 +184,19 @@ export default function SalesPage() {
 
   useEffect(() => {
     fetchOrders()
-  }, [currentPage, itemsPerPage, searchTerm, searchCustomerId, searchSalesPersonId, searchIsTaxInvoice, searchStatus, searchDeliveryOrderStatus])
+  }, [currentPage, itemsPerPage, searchTerm, searchCustomerId, searchSalesPersonId, searchRouteId, searchIsTaxInvoice, searchStatus, searchDeliveryOrderStatus])
+
+  // Fetch routes list for filter
+  useEffect(() => {
+    routesApi.getAll<Route>()
+      .then((data: any) => {
+        setRoutes(Array.isArray(data) ? data : data?.data || [])
+      })
+      .catch((err: any) => {
+        console.error("Failed to load routes:", err)
+        setRoutes([])
+      })
+  }, [])
 
   // Fetch customers for order dialog
   useEffect(() => {
@@ -480,6 +495,7 @@ export default function SalesPage() {
     setSearchTerm("")
     setSearchCustomerId("ALL")
     setSearchSalesPersonId("ALL")
+    setSearchRouteId("ALL")
     setSearchIsTaxInvoice("ALL")
     setSearchStatus("ALL")
     setSearchDeliveryOrderStatus("ALL")
@@ -507,7 +523,7 @@ export default function SalesPage() {
         <span>
           Showing {startIndex}-{endIndex} of {totalOrders} orders
         </span>
-        {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
+        {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchRouteId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
           <span className="flex items-center">
             <Search className="mr-1 h-3 w-3" />
             Filters active
@@ -1057,6 +1073,7 @@ export default function SalesPage() {
         search: searchTerm || undefined,
         customerId: searchCustomerId !== "ALL" ? searchCustomerId : undefined,
         salesPersonId: searchSalesPersonId !== "ALL" ? searchSalesPersonId : undefined,
+        routeId: searchRouteId !== "ALL" ? searchRouteId : undefined,
         isTaxInvoice: searchIsTaxInvoice !== "ALL" ? searchIsTaxInvoice : undefined,
         status: searchStatus !== "ALL" ? searchStatus : undefined,
         deliveryOrderStatus: searchDeliveryOrderStatus !== "ALL" ? searchDeliveryOrderStatus : undefined,
@@ -1070,7 +1087,7 @@ export default function SalesPage() {
 
       // ── Sheet 1: Orders Summary ──────────────────────────────────────────
       const summaryHeader = [
-        "Order #", "Invoice Type", "Customer", "Type", "Delivery?",
+        "Order #", "Invoice Type", "Customer", "Route", "Type", "Delivery?",
         "Order Date", "Delivery Date", "Dispatch Date",
         "Sales Person", "PO Number",
         "Sub Total (LKR)", "Tax Amount (LKR)", "Total Amount (LKR)",
@@ -1078,10 +1095,12 @@ export default function SalesPage() {
       ]
       const summaryRows: any[][] = [summaryHeader]
       orders.forEach((o) => {
+        const routeName = o.Route?.routeName || routes.find(r => String(r.id) === String(o.routeId))?.routeName || ""
         summaryRows.push([
           o.orderNumber,
           o.isTaxInvoice ? "Tax Invoice" : "Regular",
           o.customerName || "",
+          routeName,
           o.customerType || "",
           o.isDelivery ? "Delivery" : "Pickup",
           o.orderDate ? o.orderDate.substring(0, 10) : "",
@@ -1098,7 +1117,7 @@ export default function SalesPage() {
       })
       const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows)
       wsSummary["!cols"] = [
-        { wch: 16 }, { wch: 13 }, { wch: 30 }, { wch: 14 }, { wch: 10 },
+        { wch: 16 }, { wch: 13 }, { wch: 30 }, { wch: 20 }, { wch: 14 }, { wch: 10 },
         { wch: 13 }, { wch: 13 }, { wch: 13 },
         { wch: 20 }, { wch: 14 },
         { wch: 17 }, { wch: 17 }, { wch: 17 },
@@ -1872,8 +1891,8 @@ export default function SalesPage() {
         <Card>
           <CardHeader className="p-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 w-full justify-between">
-                <div className="relative">
+              <div className="flex flex-wrap items-center gap-3 w-full">
+                <div>
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     placeholder="Search orders..."
@@ -1888,13 +1907,13 @@ export default function SalesPage() {
                   onValueChange={(id) => setSearchCustomerId(id ? String(id) : "ALL")}
                   placeholder="All Customers"
                   showMainBadge={true}
-                  className="font-normal"
+                  className="font-normal w-[180px]"
                 />
                 <Select
                   value={searchSalesPersonId}
                   onValueChange={setSearchSalesPersonId}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Filter by sales person" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1905,10 +1924,24 @@ export default function SalesPage() {
                   </SelectContent>
                 </Select>
                 <Select
+                  value={searchRouteId}
+                  onValueChange={setSearchRouteId}
+                >
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Filter by route" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Routes</SelectItem>
+                    {routes.map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)}>{r.routeName || `Route #${r.id}`}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
                   value={searchIsTaxInvoice}
                   onValueChange={setSearchIsTaxInvoice}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue placeholder="Filter by invoice type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1921,7 +1954,7 @@ export default function SalesPage() {
                   value={searchStatus}
                   onValueChange={setSearchStatus}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1936,7 +1969,7 @@ export default function SalesPage() {
                   value={searchDeliveryOrderStatus}
                   onValueChange={setSearchDeliveryOrderStatus}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue placeholder="Filter by DO status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1951,12 +1984,12 @@ export default function SalesPage() {
                     <SelectItem value="Failed">DO Failed</SelectItem>
                   </SelectContent>
                 </Select>
-                {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
+                {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchRouteId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearFilters}
-                    className="h-8 px-2 text-gray-500 hover:text-red-600"
+                    className="h-8 px-2 text-gray-500 hover:text-red-600 ml-auto"
                   >
                     <X className="h-4 w-4 mr-1" />
                     Clear Filters
@@ -2010,7 +2043,7 @@ export default function SalesPage() {
                           <TableCell className="py-2">
                             <div>
                               <div className="font-medium">{order.customerName}</div>
-                              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                                 <span>{order.customerType}</span>
                                 <span>•</span>
                                 <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${order.isDelivery
@@ -2019,6 +2052,14 @@ export default function SalesPage() {
                                   }`}>
                                   {order.isDelivery ? 'Delivery' : 'Pickup'}
                                 </span>
+                                {(order.Route?.routeName || routes.find(r => String(r.id) === String(order.routeId))?.routeName) && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                      {order.Route?.routeName || routes.find(r => String(r.id) === String(order.routeId))?.routeName}
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </TableCell>
@@ -2116,6 +2157,7 @@ export default function SalesPage() {
                   <div><b>Order Date:</b> {formatDate(viewOrder.orderDate)}</div>
                   <div><b>Delivery Date:</b> {formatDate(viewOrder.deliveryDate || "")}</div>
                   <div><b>Customer:</b> {viewOrder.customerName}</div>
+                  <div><b>Route:</b> {viewOrder.Route?.routeName || routes.find(r => String(r.id) === String(viewOrder.routeId))?.routeName || "-"}</div>
                   {viewOrder.isDelivery ? <div><b>Dispatch Date:</b> {formatDate(viewOrder.dispatchDate || "")}</div> : null}
                   <div className="col-span-2"><b>{viewOrder.isDelivery ? 'Delivery' : 'Pickup'} Address:</b> {viewOrder.deliveryAddress}</div>
                   <div><b>Contact Number:</b> {viewOrder.contactNumber}</div>

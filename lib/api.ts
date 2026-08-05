@@ -1303,6 +1303,7 @@ function transformSalesOrder(backendOrder: any): SalesOrder {
     SalesPerson: backendOrder.SalesPerson ?? null,
     customerId: backendOrder.customerId,
     routeId: backendOrder.routeId ?? 0,
+    Route: backendOrder.Route ?? null,
     customerName: backendOrder.Customer?.name ?? "",
     customerType: backendOrder.Customer?.type ?? "",
     customerIsTaxInclusive: backendOrder.Customer?.isTaxInclusive ?? false,
@@ -2482,6 +2483,20 @@ export const grnApi = {
 /*                            SALES ORDER SPECIFIC APIS                       */
 /* -------------------------------------------------------------------------- */
 
+export interface Route {
+  id: number
+  routeName: string
+  description?: string
+  city?: string
+  startPoint?: string
+  endPoint?: string
+  distanceKm?: number
+  estimateTime?: string
+  vehicleId?: number
+  driverId?: number
+  salesPersonId?: number
+}
+
 export interface SalesOrderItem {
   Item: any
   item: any
@@ -2510,6 +2525,10 @@ export interface SalesOrder {
   customerId: number
   isDelivery: boolean
   routeId: number
+  Route?: {
+    id: number
+    routeName: string
+  }
   customerName?: string
   customerType?: string
   customerIsTaxInclusive?: boolean
@@ -2543,6 +2562,7 @@ export const salesOrdersApi = {
     search?: string
     customerId?: string | number
     salesPersonId?: string | number
+    routeId?: string | number
     isTaxInvoice?: string   // "ALL" | "TAX" | "REGULAR"
     status?: string         // "ALL" | "Pending" | "Approved" | "Rejected" | "Cancelled"
     deliveryOrderStatus?: string // "ALL" | "Pending" | "Approved" | "Scheduled" | "Dispatched" | "In Transit" | "Delivered" | "Finalized" | "Failed" | "No DO"
@@ -2553,6 +2573,7 @@ export const salesOrdersApi = {
     if (params?.search) qp.append("search", params.search)
     if (params?.customerId) qp.append("customerId", params.customerId.toString())
     if (params?.salesPersonId) qp.append("salesPersonId", params.salesPersonId.toString())
+    if (params?.routeId && params.routeId !== "ALL") qp.append("routeId", params.routeId.toString())
     if (params?.isTaxInvoice && params.isTaxInvoice !== "ALL")
       qp.append("isTaxInvoice", params.isTaxInvoice)
     if (params?.status && params.status !== "ALL")
