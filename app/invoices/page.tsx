@@ -732,7 +732,8 @@ export default function InvoicesPage() {
             doc.text(itemLines[0], cols[1].x, yPos)
 
             // Qty
-            doc.text(qty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " pcs", cols[2].x, yPos, { align: "right" })
+            const freeQtyText = Number(item.freeQty || 0) > 0 ? ` (+${item.freeQty} Free)` : "";
+            doc.text(qty.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " pcs" + freeQtyText, cols[2].x, yPos, { align: "right" })
 
             // Rate and Amount
             doc.setFontSize(9)
@@ -1349,7 +1350,12 @@ export default function InvoicesPage() {
                                                                     </span>
                                                                 )}
                                                             </TableCell>
-                                                            <TableCell className="py-2 px-3 text-right text-xs">{item.qty} {item.item?.unit}</TableCell>
+                                                            <TableCell className="py-2 px-3 text-right text-xs">
+                                                                <span>{item.qty} {item.item?.unit}</span>
+                                                                {Number(item.freeQty || 0) > 0 && (
+                                                                    <div className="text-purple-700 font-bold text-xs">+{item.freeQty} Free</div>
+                                                                )}
+                                                            </TableCell>
                                                             <TableCell className="py-2 px-3 text-right text-xs">LKR {Number(item.price).toFixed(2)}</TableCell>
                                                             <TableCell className="py-2 px-3 text-right">
                                                                 {item.discount && item.discount > 0 ? (

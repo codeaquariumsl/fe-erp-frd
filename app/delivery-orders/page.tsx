@@ -76,14 +76,15 @@ export default function DeliveryOrdersPage() {
       .map(id => currentMap[id] || deliveryOrders.find((o: any) => o.id === id))
       .filter(Boolean);
 
-    const itemMap: Record<string, { itemName: string; totalQty: number }> = {};
+    const itemMap: Record<string, { itemName: string; totalQty: number; freeQty: number }> = {};
     selectedOrders.forEach((order: any) => {
       (order.DeliveryOrderItems || []).forEach((item: any) => {
         const key = item.itemId;
         if (!itemMap[key]) {
-          itemMap[key] = { itemName: item.Item?.name || item.itemName || "Unknown Item", totalQty: 0 };
+          itemMap[key] = { itemName: item.Item?.name || item.itemName || "Unknown Item", totalQty: 0, freeQty: 0 };
         }
         itemMap[key].totalQty += Number(item.qty || 0);
+        itemMap[key].freeQty += Number(item.freeQty || item.freeIssueQty || 0);
       });
     });
     console.log("Summarized items across all pages:", itemMap);
@@ -1651,7 +1652,9 @@ export default function DeliveryOrdersPage() {
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <div className="text-lg font-semibold text-blue-800">Selected Orders: <span className="font-mono">{selectedApprovedIds.length}</span></div>
-                  <div className="text-sm text-gray-600">Total Items: <span className="font-mono">{summarizedItems.length}</span> | Total Quantity: <span className="font-mono">{summarizedItems.reduce((sum: number, item: any) => sum + Number(item.totalQty || 0), 0)}</span></div>
+                  <div className="text-sm text-gray-600">
+                    Total Items: <span className="font-mono">{summarizedItems.length}</span> | Billed Qty: <span className="font-mono">{summarizedItems.reduce((sum: number, item: any) => sum + Number(item.totalQty || 0), 0)}</span> | Free Qty: <span className="font-mono text-purple-700 font-bold">{summarizedItems.reduce((sum: number, item: any) => sum + Number(item.freeQty || 0), 0)}</span> | Overall Total: <span className="font-mono font-bold text-blue-700">{summarizedItems.reduce((sum: number, item: any) => sum + Number(item.totalQty || 0) + Number(item.freeQty || 0), 0)}</span>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -1685,13 +1688,15 @@ export default function DeliveryOrdersPage() {
                     <TableRow className="bg-gray-50">
                       <TableHead className="font-semibold">#</TableHead>
                       <TableHead className="font-semibold">Item Name</TableHead>
+                      <TableHead className="font-semibold">Billed Qty</TableHead>
+                      <TableHead className="font-semibold">Free Qty</TableHead>
                       <TableHead className="font-semibold">Total Qty</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {summarizedItems.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground py-6">No items found in selected orders.</TableCell>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">No items found in selected orders.</TableCell>
                       </TableRow>
                     ) : (
                       summarizedItems.map((item: any, idx: number) => (
@@ -1699,6 +1704,8 @@ export default function DeliveryOrdersPage() {
                           <TableCell className="text-xs text-gray-500">{idx + 1}</TableCell>
                           <TableCell className="font-medium">{item.itemName}</TableCell>
                           <TableCell className="font-semibold text-blue-700">{item.totalQty}</TableCell>
+                          <TableCell className="font-semibold text-purple-700">{item.freeQty > 0 ? `+${item.freeQty}` : '0'}</TableCell>
+                          <TableCell className="font-bold text-gray-900">{Number(item.totalQty || 0) + Number(item.freeQty || 0)}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -2506,7 +2513,13 @@ export default function DeliveryOrdersPage() {
                                               <TableCell className="font-medium py-2">{item.Item?.name}</TableCell>
                                               <TableCell className="py-2">
                                                 <div>
-                                                  <span className="font-medium">{item.qty} {item.Item?.unit}</span><br />
+                                                  <span className="font-medium">{item.qty} {item.Item?.unit}</span>
+                                                  {Number(item.freeQty || 0) > 0 && (
+                                                    <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700 font-semibold border-purple-200">
+                                                      +{item.freeQty} Free
+                                                    </Badge>
+                                                  )}
+                                                  <br />
                                                   <span className="text-xs text-muted-foreground">{selectedOrder?.status === "Finalized" || selectedOrder?.status === "Delivered" ? item.acceptedQty + ' ' + item.Item?.unit : ""}</span>
                                                 </div>
                                               </TableCell>

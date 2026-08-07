@@ -3751,6 +3751,7 @@ export interface InvoiceItem {
   itemId: number;
   code: string;
   qty: number;
+  freeQty?: number;
   price: number;
   discount?: number;
   isTaxItem?: boolean;
@@ -3768,6 +3769,7 @@ export interface InvoiceItemResponse {
   itemId: number;
   code: string;
   qty: number;
+  freeQty?: number;
   price: number;
   discount: number;
   isTaxItem?: boolean;
