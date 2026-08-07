@@ -117,7 +117,7 @@ export default function DeliveryOrdersPage() {
     }
   };
 
-  // Print PDF handler - Delivery Order Summary (Same Layout as Packing Slip)
+  // Print PDF handler - Delivery Order Summary (Same Layout as printInvoice)
   const handlePrintSummaryPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
@@ -125,154 +125,164 @@ export default function DeliveryOrdersPage() {
     const margin = 15;
 
     // Helper: Right align text
-    const rightText = (text: string, y: number, x: number = pageWidth - margin) => {
-      doc.text(text, x, y, { align: "right" });
+    const rightText = (text: string, y: number, x: number = pageWidth - margin, options: any = {}) => {
+      doc.text(text, x, y, { align: "right", ...options });
     };
 
     let yPos = 20;
 
     // 1. Header Section (Logo + Company Details)
-    // Logo
     try {
-      doc.addImage("/assets/codeaqua_logo.png", "PNG", margin, yPos - 5, 40, 35);
+      doc.setFillColor(253, 203, 88); // Yellowish circle
+      doc.circle(margin + 15, yPos + 5, 15, "F");
+      doc.addImage("/assets/fruit_easy_logo.png", "PNG", margin, yPos - 10, 30, 30);
     } catch (e) {
       console.error("Failed to add logo:", e);
-      doc.setTextColor(76, 175, 80);
-      doc.setFontSize(22);
+      doc.setFillColor(253, 203, 88);
+      doc.circle(margin + 15, yPos + 5, 15, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text("Code Aqua", margin, yPos + 10);
+      doc.text("fe", margin + 10, yPos + 2);
+      doc.setFontSize(8);
+      doc.text("FRUIT", margin + 8, yPos + 6);
+      doc.text("eazy", margin + 9, yPos + 10);
     }
 
-    // Company Details
-    doc.setTextColor(60, 60, 60);
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    const companyX = margin + 50;
-    doc.text("Code Aqua ERP Solutions", companyX, yPos);
-
-    yPos += 5;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text("B03, Crescat Boulevard, No 77 Colombo 03", companyX, yPos);
-    yPos += 4;
-    doc.text("VAT, 102861841 7000", companyX, yPos);
-    yPos += 4;
-    doc.text("+9471672564", companyX, yPos);
-    yPos += 4;
-    doc.text("info@bhlanka.com", companyX, yPos);
-    yPos += 4;
-    doc.text("www.bhlanka.com", companyX, yPos);
-
-    yPos += 10;
-
-    // 2. Title "Delivery Summary"
+    // Right Header
     const selectedOrders = getSelectedOrders();
     const isPending = selectedOrders.length > 0 && selectedOrders.every((o: any) => o.status === "Pending");
 
-    doc.setFontSize(24);
-    doc.setTextColor(70, 130, 180); // Steel Blue style color
     doc.setFont("helvetica", "normal");
-    doc.text(`Delivery Summary ${isPending ? "(PENDING)" : ""}`, pageWidth - margin, yPos, { align: "right" });
-
-    yPos += 10;
-
-    // 3. Summary Details (Report Info)
-    doc.setFontSize(10);
+    doc.setFontSize(26);
     doc.setTextColor(0, 0, 0);
-
-    const leftColX = margin;
-    const rightColX = pageWidth - margin - 80;
-
-    // Left Column Info
-    doc.setFont("helvetica", "bold");
-    doc.text("SUMMARY DETAILS", leftColX, yPos);
-    yPos += 5;
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Generated Date: ${format(new Date(), 'dd/MM/yyyy')}`, leftColX, yPos);
-    yPos += 5;
-    doc.text(`Generated Time: ${format(new Date(), 'HH:mm:ss')}`, leftColX, yPos);
-    yPos += 5;
-    if (createdSummaryCode) {
-      doc.text(`Summary Code: ${createdSummaryCode}`, leftColX, yPos);
-      yPos += 5;
-    }
-
-    // Reset Y for Right Column if needed, or continue below
-    yPos += 5;
-
-    // Right Column Info (Stats)
-    // We can place total items/orders here aligned to right similar to invoice no/date
-    const statsY = yPos - 20;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    // Align with the "SUMMARY DETAILS" header line approx
-    // Using simple layout below left column for now as there isn't strict "Bill To" data here
-
-    doc.text(`SELECTED ORDERS: ${selectedApprovedIds.length}`, leftColX, yPos);
-    yPos += 5;
-    doc.text(`TOTAL ITEMS: ${summarizedItems.length}`, leftColX, yPos);
-    yPos += 15;
-
-
-    // 4. Items Table
-    const tableCols = [
-      { label: "NO", x: margin, w: 15 },
-      { label: "ITEM CODE", x: margin + 15, w: 30 },
-      { label: "DESCRIPTION", x: margin + 45, w: 90 },
-      { label: "QTY", x: pageWidth - margin, w: 20, align: "right" }
-    ];
-
-    // Header Background
-    doc.setFillColor(225, 240, 255); // Light blue
-    doc.rect(margin, yPos - 4, pageWidth - (margin * 2), 8, 'F');
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 149, 237); // Cornflower Blue equivalent
-    doc.setFontSize(9);
-
-    doc.text("NO", tableCols[0].x, yPos + 1);
-    doc.text("ITEM CODE", tableCols[1].x, yPos + 1);
-    doc.text("DESCRIPTION", tableCols[2].x, yPos + 1);
-    doc.text("QTY", tableCols[3].x, yPos + 1, { align: "right" });
+    rightText(`Delivery Summary ${isPending ? "(PENDING)" : ""}`, yPos);
 
     yPos += 8;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    rightText(createdSummaryCode ? `# ${createdSummaryCode}` : `# DOS-${format(new Date(), 'yyyyMMdd-HHmm')}`, yPos);
+
+    // Company Details (Left)
+    yPos = 50;
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Fruit Eazy", margin, yPos);
 
-    // Items Loop
-    summarizedItems.forEach((item: any, idx: number) => {
-      // Check Page Break
-      if (yPos > pageHeight - 20) {
+    yPos += 5;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 80, 80);
+    doc.text("No. 358,", margin, yPos);
+    yPos += 4;
+    doc.text("Jana Jaya City Mall,", margin, yPos);
+    yPos += 4;
+    doc.text("Rajagiriya Western Province", margin, yPos);
+    yPos += 4;
+    doc.text("SriLanka", margin, yPos);
+    yPos += 4;
+    doc.text("0744118869", margin, yPos);
+    yPos += 4;
+    doc.text("office@ceyloncarb.com", margin, yPos);
+
+    // Summary Details (Right Info Block)
+    const billToY = 50;
+    let rightY = billToY;
+    const labelX = pageWidth - margin - 45;
+    const valueX = pageWidth - margin;
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 80, 80);
+
+    doc.text("Generated Date :", labelX, rightY, { align: "right" });
+    rightText(format(new Date(), 'dd MMM yyyy'), rightY, valueX);
+
+    rightY += 6;
+    doc.text("Generated Time :", labelX, rightY, { align: "right" });
+    rightText(format(new Date(), 'HH:mm:ss'), rightY, valueX);
+
+    rightY += 6;
+    doc.text("Selected Orders :", labelX, rightY, { align: "right" });
+    rightText(selectedApprovedIds.length.toString(), rightY, valueX);
+
+    rightY += 6;
+    doc.text("Total Items :", labelX, rightY, { align: "right" });
+    rightText(summarizedItems.length.toString(), rightY, valueX);
+
+    yPos = Math.max(yPos + 10, rightY + 10);
+
+    // Table Header
+    doc.setFillColor(60, 60, 60);
+    doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
+
+    const cols = [
+      { label: "#", x: margin + 5, align: "center" },
+      { label: "Item & Description", x: margin + 15, align: "left" },
+      { label: "Billed Qty", x: pageWidth - margin - 70, align: "right" },
+      { label: "Free Qty", x: pageWidth - margin - 35, align: "right" },
+      { label: "Total Qty", x: pageWidth - margin - 5, align: "right" }
+    ];
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(255, 255, 255);
+
+    cols.forEach(c => {
+      doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" | "center" });
+    });
+
+    yPos += 12;
+    doc.setTextColor(0, 0, 0);
+
+    // Table Rows
+    summarizedItems.forEach((item: any, index: number) => {
+      if (yPos > pageHeight - 30) {
         doc.addPage();
         yPos = 20;
-        // Draw Header on new page? (Optional, kept simple for now)
+
+        doc.setFillColor(60, 60, 60);
+        doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(255, 255, 255);
+        cols.forEach(c => {
+          doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" | "center" });
+        });
+        yPos += 12;
+        doc.setTextColor(0, 0, 0);
       }
 
-      const itemNo = (idx + 1).toString();
-      // Item code isn't explicitly in the summarizedItems map key logic (itemId used), 
-      // usually we might need to fetch it or store it. 
-      // Assuming item key or name might have it, or we leave it blank/mock if not available in this specific state view.
-      // For now, let's try to see if itemId is usable or just placeholder
-      const itemCode = "-";
       const itemName = item.itemName || "Unknown Item";
-      const quantity = `${item.totalQty} ${item.unit || ''}`;
+      const totalQty = Number(item.totalQty || 0);
+      const freeQty = Number(item.freeQty || 0);
+      const overallQty = totalQty + freeQty;
 
+      doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.text(itemNo, tableCols[0].x, yPos);
 
+      // Index
+      doc.text((index + 1).toString(), cols[0].x, yPos, { align: "center" });
+
+      // Item Name
+      const itemLines = doc.splitTextToSize(itemName, 80);
+      doc.text(itemLines[0], cols[1].x, yPos);
+
+      // Billed Qty
+      doc.text(totalQty.toLocaleString('en-US') + " pcs", cols[2].x, yPos, { align: "right" });
+
+      // Free Qty
+      doc.text(freeQty > 0 ? `+${freeQty}` : "0", cols[3].x, yPos, { align: "right" });
+
+      // Total Qty
       doc.setFont("helvetica", "bold");
-      doc.text(itemCode, tableCols[1].x, yPos);
+      doc.text(overallQty.toLocaleString('en-US') + " pcs", cols[4].x, yPos, { align: "right" });
 
-      doc.setFont("helvetica", "normal");
-      const descLines = doc.splitTextToSize(itemName, tableCols[2].w);
-      doc.text(descLines, tableCols[2].x, yPos);
-
-      doc.text(quantity, tableCols[3].x, yPos, { align: "right" });
-
-      const lineHeight = 6;
-      yPos += Math.max(descLines.length * 5, lineHeight);
+      yPos += 2;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 6;
     });
 
     // Save

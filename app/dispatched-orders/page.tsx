@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { ERPLayout } from "@/components/layouts/erp-layout"
@@ -397,159 +397,177 @@ export default function DispatchedOrdersPage() {
         const margin = 15;
 
         // Helper: Right align text
-        const rightText = (text: string, y: number, x: number = pageWidth - margin) => {
-            doc.text(text, x, y, { align: "right" });
+        const rightText = (text: string, y: number, x: number = pageWidth - margin, options: any = {}) => {
+            doc.text(text, x, y, { align: "right", ...options });
         };
 
         let yPos = 20;
 
         // 1. Header Section (Logo + Company Details)
-        // Logo
         try {
-            doc.addImage("/assets/codeaqua_logo.png", "PNG", margin, yPos - 5, 40, 35);
+            doc.setFillColor(253, 203, 88); // Yellowish circle
+            doc.circle(margin + 15, yPos + 5, 15, "F");
+            doc.addImage("/assets/fruit_easy_logo.png", "PNG", margin, yPos - 10, 30, 30);
         } catch (e) {
             console.error("Failed to add logo:", e);
-            doc.setTextColor(76, 175, 80);
-            doc.setFontSize(22);
+            doc.setFillColor(253, 203, 88);
+            doc.circle(margin + 15, yPos + 5, 15, "F");
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
-            doc.text("Code Aqua", margin, yPos + 10);
+            doc.text("fe", margin + 10, yPos + 2);
+            doc.setFontSize(8);
+            doc.text("FRUIT", margin + 8, yPos + 6);
+            doc.text("eazy", margin + 9, yPos + 10);
         }
 
-        // Company Details
-        doc.setTextColor(60, 60, 60);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        const companyX = margin + 50;
-        doc.text("Code Aqua ERP Solutions", companyX, yPos);
-
-        yPos += 5;
-        doc.setFontSize(9);
+        // Right Header Title
         doc.setFont("helvetica", "normal");
-        doc.text("B03, Crescat Boulevard, No 77 Colombo 03", companyX, yPos);
-        yPos += 4;
-        doc.text("VAT, 102861841 7000", companyX, yPos);
-        yPos += 4;
-        doc.text("+9471672564", companyX, yPos);
-        yPos += 4;
-        doc.text("info@bhlanka.com", companyX, yPos);
-        yPos += 4;
-        doc.text("www.bhlanka.com", companyX, yPos);
-
-        yPos += 20;
-
-        // 2. Title "Delivery Summary"
-        doc.setFontSize(24);
-        doc.setTextColor(70, 130, 180); // Steel Blue style color
-        doc.setFont("helvetica", "normal");
-        doc.text("Delivery Summary", margin, yPos);
-
-        yPos += 15;
-
-        // 3. Summary Details (Report Info)
-        doc.setFontSize(10);
+        doc.setFontSize(26);
         doc.setTextColor(0, 0, 0);
-
-        const leftColX = margin;
-
-        doc.setFont("helvetica", "bold");
-        doc.text("SUMMARY DETAILS", leftColX, yPos);
-        yPos += 5;
-
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Summary Code: ${summary.code}`, leftColX, yPos);
-        yPos += 5;
-        doc.text(`Generated Date: ${format(new Date(summary.dateTime), 'dd/MM/yyyy')}`, leftColX, yPos);
-        yPos += 5;
-        doc.text(`Generated Time: ${format(new Date(summary.dateTime), 'HH:mm:ss')}`, leftColX, yPos);
-        yPos += 5;
-        if (summary.isDispatched !== undefined) {
-            doc.text(`Status: ${summary.isDispatched ? 'Dispatched' : 'Pending'}`, leftColX, yPos);
-            yPos += 5;
-        }
-
-        // Stats
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        const itemsCount = summary.SummaryItems ? summary.SummaryItems.length : 0;
-        doc.text(`TOTAL ITEMS: ${itemsCount}`, leftColX, yPos);
-
-        yPos += 15;
-
-        // 4. Items Table
-        const tableCols = [
-            { label: "NO", x: margin, w: 15 },
-            { label: "ITEM CODE", x: margin + 15, w: 30 },
-            { label: "DESCRIPTION", x: margin + 45, w: 90 },
-            { label: "QTY", x: pageWidth - margin, w: 20, align: "right" }
-        ];
-
-        // Header Background
-        doc.setFillColor(225, 240, 255); // Light blue
-        doc.rect(margin, yPos - 4, pageWidth - (margin * 2), 8, 'F');
-
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(100, 149, 237); // Cornflower Blue equivalent
-        doc.setFontSize(9);
-
-        // Header Text
-        doc.text("NO", tableCols[0].x, yPos + 1);
-        doc.text("ITEM CODE", tableCols[1].x, yPos + 1);
-        doc.text("DESCRIPTION", tableCols[2].x, yPos + 1);
-        doc.text("QTY", tableCols[3].x, yPos + 1, { align: "right" });
+        rightText("Dispatch Summary", yPos);
 
         yPos += 8;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        rightText(`# ${summary.code || "-"}`, yPos);
+
+        // Company Details (Left)
+        yPos = 50;
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Fruit Eazy", margin, yPos);
 
-        // Items Loop
+        yPos += 5;
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(80, 80, 80);
+        doc.text("No. 358,", margin, yPos);
+        yPos += 4;
+        doc.text("Jana Jaya City Mall,", margin, yPos);
+        yPos += 4;
+        doc.text("Rajagiriya Western Province", margin, yPos);
+        yPos += 4;
+        doc.text("SriLanka", margin, yPos);
+        yPos += 4;
+        doc.text("0744118869", margin, yPos);
+        yPos += 4;
+        doc.text("office@ceyloncarb.com", margin, yPos);
+
+        // Info Section (Right Info Block)
+        const billToY = 50;
+        let rightY = billToY;
+        const labelX = pageWidth - margin - 45;
+        const valueX = pageWidth - margin;
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(80, 80, 80);
+
+        const summaryDate = summary.dateTime ? format(new Date(summary.dateTime), "dd MMM yyyy") : format(new Date(), "dd MMM yyyy");
+        const summaryTime = summary.dateTime ? format(new Date(summary.dateTime), "HH:mm:ss") : format(new Date(), "HH:mm:ss");
+        const statusText = summary.isDispatched ? "Dispatched" : "Pending";
+        const itemsCount = summary.SummaryItems ? summary.SummaryItems.length : 0;
+
+        doc.text("Date :", labelX, rightY, { align: "right" });
+        rightText(summaryDate, rightY, valueX);
+
+        rightY += 6;
+        doc.text("Time :", labelX, rightY, { align: "right" });
+        rightText(summaryTime, rightY, valueX);
+
+        rightY += 6;
+        doc.text("Status :", labelX, rightY, { align: "right" });
+        rightText(statusText, rightY, valueX);
+
+        rightY += 6;
+        doc.text("Total Items :", labelX, rightY, { align: "right" });
+        rightText(itemsCount.toString(), rightY, valueX);
+
+        yPos = Math.max(yPos + 10, rightY + 10);
+
+        // Table Header
+        doc.setFillColor(60, 60, 60);
+        doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
+
+        const cols = [
+            { label: "#", x: margin + 5, align: "center" },
+            { label: "Code", x: margin + 15, align: "left" },
+            { label: "Item & Description", x: margin + 45, align: "left" },
+            { label: "Qty", x: pageWidth - margin - 5, align: "right" }
+        ];
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(255, 255, 255);
+
+        cols.forEach(c => {
+            doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" | "center" });
+        });
+
+        yPos += 12;
+        doc.setTextColor(0, 0, 0);
+
+        // Table Rows
         if (summary.SummaryItems && summary.SummaryItems.length > 0) {
             summary.SummaryItems.forEach((item, idx) => {
-                // Check Page Break
-                if (yPos > pageHeight - 20) {
+                if (yPos > pageHeight - 30) {
                     doc.addPage();
                     yPos = 20;
+
+                    // Table Header on new page
+                    doc.setFillColor(60, 60, 60);
+                    doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
+                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "normal");
+                    doc.setTextColor(255, 255, 255);
+                    cols.forEach(c => {
+                        doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" | "center" });
+                    });
+                    yPos += 12;
+                    doc.setTextColor(0, 0, 0);
                 }
 
                 const itemNo = (idx + 1).toString();
-                const itemCode = item.Item.barcode || item.Item.sku || "-";
-                const itemName = item.Item.name;
-                const quantity = `${item.qty} ${item.Item.unit || ''}`;
+                const itemCode = item.Item?.barcode || item.Item?.sku || "-";
+                const itemName = item.Item?.name || "Unknown Item";
+                const freeQtyText = Number(item.freeQty || 0) > 0 ? ` (+${item.freeQty} Free)` : "";
+                const quantity = `${item.qty} ${item.Item?.unit || 'pcs'}${freeQtyText}`;
 
-                // Extra info for description
                 const doInfo = item.DeliveryOrder?.doNumber ? `DO: ${item.DeliveryOrder.doNumber}` : "";
                 const batchInfo = item.Batch?.batchNumber ? `Batch: ${item.Batch.batchNumber}` : "";
                 const extraInfo = [doInfo, batchInfo].filter(Boolean).join(" | ");
 
-                const fullDescription = extraInfo ? `${itemName}\n(${extraInfo})` : itemName;
+                const fullDescription = extraInfo ? `${itemName} (${extraInfo})` : itemName;
 
+                doc.setFontSize(9);
                 doc.setFont("helvetica", "normal");
-                doc.text(itemNo, tableCols[0].x, yPos);
 
+                // Index
+                doc.text(itemNo, cols[0].x, yPos, { align: "center" });
+
+                // Code
                 doc.setFont("helvetica", "bold");
-                doc.text(itemCode, tableCols[1].x, yPos);
+                doc.text(itemCode, cols[1].x, yPos);
 
+                // Description
                 doc.setFont("helvetica", "normal");
-                const descLines = doc.splitTextToSize(fullDescription, tableCols[2].w);
-                doc.text(descLines, tableCols[2].x, yPos);
+                const descLines = doc.splitTextToSize(fullDescription, 90);
+                doc.text(descLines[0], cols[2].x, yPos);
 
-                doc.text(quantity, tableCols[3].x, yPos, { align: "right" });
+                // Quantity
+                doc.text(quantity, cols[3].x, yPos, { align: "right" });
 
-                const lineHeight = 6;
-                // Calculate height based on description lines
-                const rowHeight = Math.max(descLines.length * 5, lineHeight);
-                yPos += (rowHeight + 3);
+                yPos += 2;
+                doc.setDrawColor(220, 220, 220);
+                doc.line(margin, yPos, pageWidth - margin, yPos);
+                yPos += 6;
             });
         }
 
-        // Footer (Page x of y, Generated by...)
-        const footerY = pageHeight - 10;
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Generated by Code Aqua ERP Solutions - Page 1 of ${doc.getNumberOfPages()}`, margin, footerY);
-
-        doc.save(`${summary.code || 'Summary'}.pdf`)
-    }
+        doc.save(`${summary.code || 'Dispatch-Summary'}.pdf`);
+    };
 
     return (
         <ERPLayout>
