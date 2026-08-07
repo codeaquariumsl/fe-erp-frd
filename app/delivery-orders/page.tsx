@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import * as XLSX from "xlsx"
 import { ERPLayout } from "@/components/layouts/erp-layout"
 import { deliveryOrdersApi, salesOrdersApi, driversApi, vehiclesApi, routesApi, storesApi, Store, stockApi } from "@/lib/api"
@@ -26,29 +26,67 @@ import { useAuth } from "@/lib/auth"
 
 export default function DeliveryOrdersPage() {
   const { hasPermission } = useAuth()
+
+  // Core delivery orders state
+  const [deliveryOrders, setDeliveryOrders] = useState<any[]>([])
+  const [totalOrders, setTotalOrders] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [summary, setSummary] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
   // State for approved selection and summary
   const [selectedApprovedIds, setSelectedApprovedIds] = useState<any[]>([]);
+  const [selectedOrdersMap, setSelectedOrdersMap] = useState<{ [id: string]: any }>({});
   const [showApprovedSummaryDialog, setShowApprovedSummaryDialog] = useState(false);
   const [summarizedItems, setSummarizedItems] = useState<any[]>([]);
   const [creatingSummary, setCreatingSummary] = useState(false);
   const [createdSummaryCode, setCreatedSummaryCode] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
+  // Helper to get selected order objects across all pages
+  const getSelectedOrders = useCallback(() => {
+    return (selectedApprovedIds || [])
+      .map(id => selectedOrdersMap[id] || deliveryOrders.find((o: any) => o.id === id))
+      .filter(Boolean);
+  }, [selectedApprovedIds, selectedOrdersMap, deliveryOrders]);
+
   // Show summary dialog for selected approved orders
-  const handleShowSummaryDialog = () => {
-    // Merge items from selected orders
-    const selectedOrders = deliveryOrders.filter((o: any) => selectedApprovedIds.includes(o.id));
+  const handleShowSummaryDialog = async () => {
+    let currentMap = { ...selectedOrdersMap };
+    const missingIds = (selectedApprovedIds || []).filter(
+      id => !currentMap[id] && !deliveryOrders.some((o: any) => o.id === id)
+    );
+
+    if (missingIds.length > 0) {
+      try {
+        const fetchedOrders = await Promise.all(missingIds.map(id => deliveryOrdersApi.getById(id)));
+        fetchedOrders.forEach((order: any) => {
+          if (order && order.id) {
+            currentMap[order.id] = order;
+          }
+        });
+        setSelectedOrdersMap(currentMap);
+      } catch (err) {
+        console.error("Failed to fetch missing selected orders:", err);
+      }
+    }
+
+    const selectedOrders = (selectedApprovedIds || [])
+      .map(id => currentMap[id] || deliveryOrders.find((o: any) => o.id === id))
+      .filter(Boolean);
+
     const itemMap: Record<string, { itemName: string; totalQty: number }> = {};
     selectedOrders.forEach((order: any) => {
-      order.DeliveryOrderItems.forEach((item: any) => {
+      (order.DeliveryOrderItems || []).forEach((item: any) => {
         const key = item.itemId;
         if (!itemMap[key]) {
-          itemMap[key] = { itemName: item.Item?.name, totalQty: 0 };
+          itemMap[key] = { itemName: item.Item?.name || item.itemName || "Unknown Item", totalQty: 0 };
         }
-        itemMap[key].totalQty += item.qty;
+        itemMap[key].totalQty += Number(item.qty || 0);
       });
     });
-    console.log(itemMap);
+    console.log("Summarized items across all pages:", itemMap);
 
     setSummarizedItems(Object.values(itemMap));
     setShowApprovedSummaryDialog(true);
@@ -127,8 +165,8 @@ export default function DeliveryOrdersPage() {
     yPos += 10;
 
     // 2. Title "Delivery Summary"
-    const selectedOrders = deliveryOrders.filter((o: any) => selectedApprovedIds.includes(o.id));
-    const isPending = selectedOrders.every((o: any) => o.status === "Pending");
+    const selectedOrders = getSelectedOrders();
+    const isPending = selectedOrders.length > 0 && selectedOrders.every((o: any) => o.status === "Pending");
 
     doc.setFontSize(24);
     doc.setTextColor(70, 130, 180); // Steel Blue style color
@@ -1044,13 +1082,6 @@ export default function DeliveryOrdersPage() {
   }
   const [searchTerm, setSearchTerm] = useState("")
 
-  const [deliveryOrders, setDeliveryOrders] = useState<any[]>([])
-  const [totalOrders, setTotalOrders] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
-  const [summary, setSummary] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-
   // Delete order handler
   const handleDelete = async (orderId: number) => {
     const orderToDelete = deliveryOrders.find(o => o.id === orderId)
@@ -1188,6 +1219,19 @@ export default function DeliveryOrdersPage() {
       setTotalOrders(response.pagination.total)
       setTotalPages(response.pagination.totalPages)
       setSummary(response.summary)
+
+      // Cache any orders matching selectedApprovedIds
+      if (response.data && Array.isArray(response.data)) {
+        setSelectedOrdersMap(prev => {
+          const next = { ...prev };
+          response.data.forEach((order: any) => {
+            if (selectedApprovedIds?.includes(order.id)) {
+              next[order.id] = order;
+            }
+          });
+          return next;
+        });
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load delivery orders")
     } finally {
@@ -1607,7 +1651,7 @@ export default function DeliveryOrdersPage() {
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <div className="text-lg font-semibold text-blue-800">Selected Orders: <span className="font-mono">{selectedApprovedIds.length}</span></div>
-                  <div className="text-sm text-gray-600">Total Items: <span className="font-mono">{summarizedItems.length}</span></div>
+                  <div className="text-sm text-gray-600">Total Items: <span className="font-mono">{summarizedItems.length}</span> | Total Quantity: <span className="font-mono">{summarizedItems.reduce((sum: number, item: any) => sum + Number(item.totalQty || 0), 0)}</span></div>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -1616,9 +1660,9 @@ export default function DeliveryOrdersPage() {
                     disabled={
                       creatingSummary ||
                       !!createdSummaryCode ||
-                      deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).every(o => o.status === "Pending")
+                      (getSelectedOrders().length > 0 && getSelectedOrders().every((o: any) => o.status === "Pending"))
                     }
-                    title={deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).every(o => o.status === "Pending") ? "Cannot create summary for Pending orders" : ""}
+                    title={getSelectedOrders().length > 0 && getSelectedOrders().every((o: any) => o.status === "Pending") ? "Cannot create summary for Pending orders" : ""}
                   >
                     {creatingSummary ? "Creating..." : createdSummaryCode ? "Summary Created" : "Create Summary"}
                   </Button>
@@ -2019,12 +2063,12 @@ export default function DeliveryOrdersPage() {
               onClick={() => handleShowSummaryDialog()}
               disabled={
                 selectedApprovedIds.length === 0 ||
-                (deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).some(o => o.status === "Pending") &&
-                  deliveryOrders.filter(o => selectedApprovedIds.includes(o.id)).some(o => o.status === "Approved"))
+                (getSelectedOrders().some((o: any) => o.status === "Pending") &&
+                  getSelectedOrders().some((o: any) => o.status === "Approved"))
               }
             >
               <BarChart3 className="h-4 w-4 mr-2" />
-              Stock Release Summary
+              Stock Release Summary ({selectedApprovedIds.length})
             </Button>
           </div>
         </div>
@@ -2200,11 +2244,21 @@ export default function DeliveryOrdersPage() {
                         const selectableIds = selectableOrders.map(o => o.id);
 
                         if (e.target.checked) {
-                          // Add visible selectable IDs to the current selection
+                          // Add visible selectable IDs and order objects to the current selection
                           setSelectedApprovedIds(Array.from(new Set([...(selectedApprovedIds || []), ...selectableIds])));
+                          setSelectedOrdersMap(prev => {
+                            const next = { ...prev };
+                            selectableOrders.forEach(o => { next[o.id] = o; });
+                            return next;
+                          });
                         } else {
                           // Remove visible selectable IDs from the current selection
                           setSelectedApprovedIds((selectedApprovedIds || []).filter(id => !selectableIds.includes(id)));
+                          setSelectedOrdersMap(prev => {
+                            const next = { ...prev };
+                            selectableIds.forEach(id => { delete next[id]; });
+                            return next;
+                          });
                         }
                       }}
                     />
@@ -2240,8 +2294,14 @@ export default function DeliveryOrdersPage() {
                             onChange={e => {
                               if (e.target.checked) {
                                 setSelectedApprovedIds([...selectedApprovedIds, order.id]);
+                                setSelectedOrdersMap(prev => ({ ...prev, [order.id]: order }));
                               } else {
                                 setSelectedApprovedIds(selectedApprovedIds.filter((id: any) => id !== order.id));
+                                setSelectedOrdersMap(prev => {
+                                  const copy = { ...prev };
+                                  delete copy[order.id];
+                                  return copy;
+                                });
                               }
                             }}
                           />
@@ -2737,24 +2797,30 @@ export default function DeliveryOrdersPage() {
                               {selectedOrder.SummaryItems && selectedOrder.SummaryItems.length > 0 && selectedOrder.status === "Scheduled" && (
                                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                                   <h4 className="font-semibold text-blue-800 mb-3">Stock Release Summary</h4>
-                                  <div className="grid grid-cols-3 gap-4 text-sm">
+                                  <div className="grid grid-cols-4 gap-4 text-sm">
                                     <div className="text-center">
                                       <div className="text-lg font-bold text-blue-600">
                                         {selectedOrder.SummaryItems.length}
                                       </div>
-                                      <div className="text-blue-700">Total Summary Items</div>
+                                      <div className="text-blue-700">Total Items</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-lg font-bold text-purple-600">
+                                        {selectedOrder.SummaryItems.reduce((acc: number, item: any) => acc + Number(item.qty || 0), 0)}
+                                      </div>
+                                      <div className="text-purple-700">Total Qty</div>
                                     </div>
                                     <div className="text-center">
                                       <div className="text-lg font-bold text-green-600">
-                                        {selectedOrder.SummaryItems.filter((item: any) => item.isReleased).length}
+                                        {selectedOrder.SummaryItems.filter((item: any) => item.isReleased).reduce((acc: number, item: any) => acc + Number(item.qty || 0), 0)}
                                       </div>
-                                      <div className="text-green-700">Released Items</div>
+                                      <div className="text-green-700">Released Qty</div>
                                     </div>
                                     <div className="text-center">
                                       <div className="text-lg font-bold text-orange-600">
-                                        {selectedOrder.SummaryItems.filter((item: any) => !item.isReleased).length}
+                                        {selectedOrder.SummaryItems.filter((item: any) => !item.isReleased).reduce((acc: number, item: any) => acc + Number(item.qty || 0), 0)}
                                       </div>
-                                      <div className="text-orange-700">Pending Release</div>
+                                      <div className="text-orange-700">Pending Qty</div>
                                     </div>
                                   </div>
 
@@ -2765,7 +2831,7 @@ export default function DeliveryOrdersPage() {
                                         Summary Date: {date ? format(new Date(date), "dd/MM/yyyy") : 'No date'}
                                       </div>
                                       <div className="text-xs text-blue-600">
-                                        Items for this date: {selectedOrder.SummaryItems.filter((item: any) => item.summaryDate?.split('T')[0] === date).length}
+                                        Items for this date: {selectedOrder.SummaryItems.filter((item: any) => item.summaryDate?.split('T')[0] === date).length} | Total Qty: {selectedOrder.SummaryItems.filter((item: any) => item.summaryDate?.split('T')[0] === date).reduce((acc: number, item: any) => acc + Number(item.qty || 0), 0)}
                                       </div>
                                     </div>
                                   ))}
