@@ -37,9 +37,11 @@ import {
   Invoice,
   Receipt
 } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
+import { LockKeyhole, ShieldAlert } from "lucide-react"
 import { ERPLayout } from "@/components/layouts/erp-layout"
-import { KpiCard } from "@/components/dashboard/kpi-card"
 import { KpiSection } from "@/components/dashboard/kpi-section"
+import { KpiCard } from "@/components/dashboard/kpi-card"
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -68,8 +70,60 @@ ChartJS.register(
   Filler
 )
 
+const ALL_ROUTES = [
+  { href: "/master/suppliers", permissions: ["suppliers:view"] },
+  { href: "/purchase-orders", permissions: ["purchase-orders:view"] },
+  { href: "/grn", permissions: ["grn:view"] },
+  { href: "/supplier-returns", permissions: ["supplier-returns:view"] },
+  { href: "/supplier-payments", permissions: ["supplier-payments:view"] },
+  { href: "/master/categories", permissions: ["categories:view"] },
+  { href: "/master/items", permissions: ["items:view"] },
+  { href: "/batches", permissions: ["batches:view"] },
+  { href: "/inventory", permissions: ["inventory:view"] },
+  { href: "/good-request-notes", permissions: ["good-request-notes:view"] },
+  { href: "/issue-notes", permissions: ["issue-notes:view"] },
+  { href: "/transfer-in-notes", permissions: ["transfer-in-notes:view"] },
+  { href: "/stock-adjustment", permissions: ["stock-adjustment:view"] },
+  { href: "/stock-reconciliation", permissions: ["stock-reconciliation:view"] },
+  { href: "/customers", permissions: ["customers:view"] },
+  { href: "/sales", permissions: ["sales-orders:view"] },
+  { href: "/delivery-orders", permissions: ["delivery-orders:view"] },
+  { href: "/dispatched-orders", permissions: ["dispatched-orders:view"] },
+  { href: "/invoices", permissions: ["invoices:view"] },
+  { href: "/receipts", permissions: ["receipts:view"] },
+  { href: "/credit-notes", permissions: ["credit-notes:view"] },
+  { href: "/customer-returns", permissions: ["customer-returns:view"] },
+  { href: "/master/customer-item-codes", permissions: ["customer-item-codes:view"] },
+  { href: "/master/routes", permissions: ["routes:view"] },
+  { href: "/master/vehicles", permissions: ["vehicles:view"] },
+  { href: "/accounting/account-types", permissions: ["accounting:view"] },
+  { href: "/accounting/bank-deposits", permissions: ["bank-deposits:view"] },
+  { href: "/reports", permissions: ["reports:view"] },
+  { href: "/reports/stock", permissions: ["reports-stock-reports:view"] },
+  { href: "/reports/movements", permissions: ["reports-stock-movements:view"] },
+  { href: "/reports/enhanced-movements", permissions: ["reports-stock-enhanced-movements:view"] },
+  { href: "/reports/gin", permissions: ["reports-stock-gin-reports:view"] },
+  { href: "/reports/analytics", permissions: ["reports-stock-inventory-valuation:view"] },
+  { href: "/reports/general-sales", permissions: ["reports-sales-general:view"] },
+  { href: "/reports/item-wise-sales", permissions: ["reports-sales-item-wise:view"] },
+  { href: "/reports/sales-by-item", permissions: ["reports-sales-item-wise:view"] },
+  { href: "/reports/rep-wise-sales", permissions: ["reports-sales-rep-wise:view"] },
+  { href: "/reports/rep-wise-orders", permissions: ["reports-sales-rep-wise:view"] },
+  { href: "/reports/grn", permissions: ["reports-purchasing-grn-reports:view"] },
+  { href: "/reports/item-wise-purchasing", permissions: ["reports-purchasing-item-wise:view"] },
+  { href: "/reports/supplier-wise-po", permissions: ["reports-purchasing-supplier-wise:view"] },
+  { href: "/reports/expenses", permissions: ["reports-expenses:view"] },
+  { href: "/reports/salesperson-commission", permissions: ["reports-salesperson-commission:view"] },
+  { href: "/master/locations", permissions: ["warehouse:view"] },
+  { href: "/master/stores", permissions: ["warehouse:view"] },
+  { href: "/master/units", permissions: ["units:view"] },
+  { href: "/master/return-types", permissions: ["return-types:view"] },
+  { href: "/user-management", permissions: ["users:view", "roles:view"] },
+]
+
 export default function Dashboard() {
   const router = useRouter()
+  const { hasPermission, user, isLoading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [mainDetails, setMainDetails] = useState<DashboardMainDetails | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -77,10 +131,23 @@ export default function Dashboard() {
   const [topSellingItems, setTopSellingItems] = useState<any[]>([])
   const [salesSummary, setSalesSummary] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [hasNoPermissions, setHasNoPermissions] = useState(false)
 
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    if (authLoading) return
+
+    if (user && user.roleId !== 1 && !hasPermission("dashboard:view")) {
+      const firstAllowed = ALL_ROUTES.find(r => r.permissions.some(p => hasPermission(p)))
+      if (firstAllowed) {
+        router.replace(firstAllowed.href)
+      } else {
+        setHasNoPermissions(true)
+        setLoading(false)
+      }
+    } else {
+      loadDashboardData()
+    }
+  }, [authLoading, user, hasPermission])
 
   const loadDashboardData = async () => {
     setLoading(true)
@@ -350,6 +417,24 @@ export default function Dashboard() {
       .sort((a, b) => b.totalValue - a.totalValue)
       .slice(0, 5)
   })()
+
+  if (hasNoPermissions) {
+    return (
+      <ERPLayout>
+        <div className="min-h-[80vh] flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-4 shadow-sm">
+            <div className="w-16 h-16 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-center mx-auto text-amber-600">
+              <LockKeyhole className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-slate-800">No Authorizations Assigned</h2>
+              <p className="text-sm text-slate-500">Your account does not have permissions assigned for any workspace modules. Please contact your system administrator.</p>
+            </div>
+          </div>
+        </div>
+      </ERPLayout>
+    )
+  }
 
   return (
     <ERPLayout>

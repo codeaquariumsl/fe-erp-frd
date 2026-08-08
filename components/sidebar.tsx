@@ -86,6 +86,7 @@ const navigation: NavigationItem[] = [
     name: "Purchasing",
     icon: ShoppingBag,
     permissions: [
+      "suppliers:view",
       "purchase-orders:view",
       "grn:view",
       "supplier-returns:view",
@@ -127,7 +128,17 @@ const navigation: NavigationItem[] = [
   {
     name: "Stock & Inventory",
     icon: Building2,
-    permissions: ["good-request-notes:view", "issue-notes:view", "transfer-in-notes:view", "stock-adjustment:view", "stock-reconciliation:view"],
+    permissions: [
+      "categories:view",
+      "items:view",
+      "batches:view",
+      "inventory:view",
+      "good-request-notes:view",
+      "issue-notes:view",
+      "transfer-in-notes:view",
+      "stock-adjustment:view",
+      "stock-reconciliation:view"
+    ],
     children: [
       {
         name: "Categories",
@@ -221,7 +232,11 @@ const navigation: NavigationItem[] = [
       "invoices:view",
       "receipts:view",
       "credit-notes:view",
-      "customer-returns:view"
+      "customer-returns:view",
+      "customer-item-codes:view",
+      "users:view",
+      "routes:view",
+      "vehicles:view"
     ],
     children: [
       {
@@ -307,7 +322,7 @@ const navigation: NavigationItem[] = [
   {
     name: "Finance",
     icon: DollarSign,
-    permissions: ["accounting:view"],
+    permissions: ["accounting:view", "bank-deposits:view"],
     children: [
       {
         name: "Account Types",
@@ -422,7 +437,29 @@ const navigation: NavigationItem[] = [
   {
     name: "Reports & Analytics",
     icon: BarChart3,
-    permissions: ["reports:view"],
+    permissions: [
+      "reports:view",
+      "reports-stock-inventory:view",
+      "reports-stock-reports:view",
+      "reports-stock-movements:view",
+      "reports-stock-enhanced-movements:view",
+      "reports-stock-gin-reports:view",
+      "reports-stock-inventory-valuation:view",
+      "reports-sales-distribution:view",
+      "reports-sales-general:view",
+      "reports-sales-item-wise:view",
+      "reports-sales-by-item:view",
+      "reports-sales-by-customer:view",
+      "reports-sales-customer-item:view",
+      "reports-sales-rep-wise:view",
+      "reports-procurement-purchasing:view",
+      "reports-purchasing-grn-reports:view",
+      "reports-purchasing-item-wise:view",
+      "reports-purchasing-supplier-wise:view",
+      "reports-finance-commission:view",
+      "reports-expenses:view",
+      "reports-salesperson-commission:view"
+    ],
     children: [
       {
         name: "Dashboard",
@@ -433,112 +470,112 @@ const navigation: NavigationItem[] = [
       {
         name: "Stock & Inventory",
         isHeader: true,
-        permissions: ["reports:view"],
+        permissions: ["reports-stock-inventory:view"],
       },
       {
         name: "Stock Reports",
         href: "/reports/stock",
         icon: Package,
-        permissions: ["reports:view"],
+        permissions: ["reports-stock-reports:view"],
       },
       {
         name: "Stock Movements",
         href: "/reports/movements",
         icon: RefreshCcw,
-        permissions: ["reports:view"],
+        permissions: ["reports-stock-movements:view"],
       },
       {
         name: "Enhanced Movements",
         href: "/reports/enhanced-movements",
         icon: BarChart3,
-        permissions: ["reports:view"],
+        permissions: ["reports-stock-enhanced-movements:view"],
       },
       {
         name: "GIN Reports",
         href: "/reports/gin",
         icon: FileText,
-        permissions: ["reports:view"],
+        permissions: ["reports-stock-gin-reports:view"],
       },
       {
         name: "Inventory Valuation",
         href: "/reports/analytics",
         icon: DollarSign,
-        permissions: ["reports:view"],
+        permissions: ["reports-stock-inventory-valuation:view"],
       },
       {
         name: "Sales & Distribution",
         isHeader: true,
-        permissions: ["reports:view"],
+        permissions: ["reports-sales-distribution:view"],
       },
       {
         name: "General Sales",
         href: "/reports/general-sales",
         icon: TrendingUp,
-        permissions: ["reports:view"],
+        permissions: ["reports-sales-general:view"],
       },
       {
         name: "Item Wise Sales",
         href: "/reports/item-wise-sales",
         icon: TrendingUp,
-        permissions: ["reports:view"],
+        permissions: ["reports-sales-item-wise:view"],
       },
       {
         name: "Item Detail Report",
         href: "/reports/sales-by-item",
         icon: Package,
-        permissions: ["reports:view"],
+        permissions: ["reports-sales-item-wise:view"],
       },
       {
         name: "Rep Wise Sales",
         href: "/reports/rep-wise-sales",
         icon: Users,
-        permissions: ["reports:view"],
+        permissions: ["reports-sales-rep-wise:view"],
       },
       {
         name: "Rep Wise Orders",
         href: "/reports/rep-wise-orders",
         icon: Users,
-        permissions: ["reports:view"],
+        permissions: ["reports-sales-rep-wise:view"],
       },
       {
         name: "Procurement & Purchasing",
         isHeader: true,
-        permissions: ["reports:view"],
+        permissions: ["reports-procurement-purchasing:view"],
       },
       {
         name: "GRN Reports",
         href: "/reports/grn",
         icon: FileText,
-        permissions: ["reports:view"],
+        permissions: ["reports-purchasing-grn-reports:view"],
       },
       {
         name: "Item-wise Purchasing",
         href: "/reports/item-wise-purchasing",
         icon: Package,
-        permissions: ["reports:view"],
+        permissions: ["reports-purchasing-item-wise:view"],
       },
       {
         name: "Supplier-wise PO",
         href: "/reports/supplier-wise-po",
         icon: Users,
-        permissions: ["reports:view"],
+        permissions: ["reports-purchasing-supplier-wise:view"],
       },
       {
         name: "Finance & Commission",
         isHeader: true,
-        permissions: ["reports:view"],
+        permissions: ["reports-finance-commission:view"],
       },
       {
         name: "Expenses",
         href: "/reports/expenses",
         icon: Wallet,
-        permissions: ["reports:view"],
+        permissions: ["reports-expenses:view"],
       },
       {
         name: "Commission",
         href: "/reports/salesperson-commission",
         icon: DollarSign,
-        permissions: ["reports:view"],
+        permissions: ["reports-salesperson-commission:view"],
       },
     ]
   },
@@ -787,7 +824,15 @@ export function Sidebar({ className }: SidebarProps) {
 
             // Collapsible menu groups
             if (item.children && item.name) {
-              const visibleChildren = item.children.filter(child => hasAnyPermission(child.permissions))
+              const visibleChildren = item.children.filter((child, idx, arr) => {
+                if (child.isHeader) {
+                  const nextItems = arr.slice(idx + 1)
+                  const nextHeaderIdx = nextItems.findIndex(i => i.isHeader)
+                  const sectionItems = nextHeaderIdx !== -1 ? nextItems.slice(0, nextHeaderIdx) : nextItems
+                  return sectionItems.some(i => hasAnyPermission(i.permissions)) || hasAnyPermission(child.permissions)
+                }
+                return hasAnyPermission(child.permissions)
+              })
               if (visibleChildren.length === 0) return null
 
               const isItemOpen = openItems.includes(item.name)

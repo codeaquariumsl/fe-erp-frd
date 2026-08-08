@@ -540,7 +540,135 @@ export const PERMISSIONS: Record<string, Permission> = {
     description: 'View all gin',
     module: 'Gin Management',
     action: 'view'
-  }
+  },
+
+  // Item Management
+  'items:view': { id: 'items:view', name: 'View Items', description: 'View items list', module: 'Item Management', action: 'view' },
+  'items:create': { id: 'items:create', name: 'Create Items', description: 'Create new items', module: 'Item Management', action: 'create' },
+  'items:edit': { id: 'items:edit', name: 'Edit Items', description: 'Modify items', module: 'Item Management', action: 'edit' },
+  'items:delete': { id: 'items:delete', name: 'Delete Items', description: 'Remove items', module: 'Item Management', action: 'delete' },
+
+  // Batch Management
+  'batches:view': { id: 'batches:view', name: 'View Batches', description: 'View batches', module: 'Batch Management', action: 'view' },
+  'batches:create': { id: 'batches:create', name: 'Create Batches', description: 'Create new batches', module: 'Batch Management', action: 'create' },
+  'batches:edit': { id: 'batches:edit', name: 'Edit Batches', description: 'Modify batches', module: 'Batch Management', action: 'edit' },
+  'batches:delete': { id: 'batches:delete', name: 'Delete Batches', description: 'Remove batches', module: 'Batch Management', action: 'delete' },
+
+  // Supplier Returns
+  'supplier-returns:view': { id: 'supplier-returns:view', name: 'View Supplier Returns', description: 'View supplier returns', module: 'Supplier Returns', action: 'view' },
+  'supplier-returns:create': { id: 'supplier-returns:create', name: 'Create Supplier Returns', description: 'Create supplier returns', module: 'Supplier Returns', action: 'create' },
+  'supplier-returns:edit': { id: 'supplier-returns:edit', name: 'Edit Supplier Returns', description: 'Modify supplier returns', module: 'Supplier Returns', action: 'edit' },
+  'supplier-returns:delete': { id: 'supplier-returns:delete', name: 'Delete Supplier Returns', description: 'Remove supplier returns', module: 'Supplier Returns', action: 'delete' },
+
+  // Supplier Payments
+  'supplier-payments:view': { id: 'supplier-payments:view', name: 'View Supplier Payments', description: 'View supplier payments', module: 'Supplier Payments', action: 'view' },
+  'supplier-payments:create': { id: 'supplier-payments:create', name: 'Create Supplier Payments', description: 'Create supplier payments', module: 'Supplier Payments', action: 'create' },
+  'supplier-payments:edit': { id: 'supplier-payments:edit', name: 'Edit Supplier Payments', description: 'Modify supplier payments', module: 'Supplier Payments', action: 'edit' },
+  'supplier-payments:delete': { id: 'supplier-payments:delete', name: 'Delete Supplier Payments', description: 'Remove supplier payments', module: 'Supplier Payments', action: 'delete' },
+
+  // Good Request Notes
+  'good-request-notes:view': { id: 'good-request-notes:view', name: 'View Good Request Notes', description: 'View good request notes', module: 'Stock & Inventory', action: 'view' },
+  'good-request-notes:create': { id: 'good-request-notes:create', name: 'Create Good Request Notes', description: 'Create good request notes', module: 'Stock & Inventory', action: 'create' },
+  'good-request-notes:edit': { id: 'good-request-notes:edit', name: 'Edit Good Request Notes', description: 'Modify good request notes', module: 'Stock & Inventory', action: 'edit' },
+  'good-request-notes:delete': { id: 'good-request-notes:delete', name: 'Delete Good Request Notes', description: 'Remove good request notes', module: 'Stock & Inventory', action: 'delete' },
+
+  // Issue Notes
+  'issue-notes:view': { id: 'issue-notes:view', name: 'View Issue Notes', description: 'View issue notes', module: 'Stock & Inventory', action: 'view' },
+  'issue-notes:create': { id: 'issue-notes:create', name: 'Create Issue Notes', description: 'Create issue notes', module: 'Stock & Inventory', action: 'create' },
+  'issue-notes:edit': { id: 'issue-notes:edit', name: 'Edit Issue Notes', description: 'Modify issue notes', module: 'Stock & Inventory', action: 'edit' },
+  'issue-notes:delete': { id: 'issue-notes:delete', name: 'Delete Issue Notes', description: 'Remove issue notes', module: 'Stock & Inventory', action: 'delete' },
+
+  // Transfer In Notes
+  'transfer-in-notes:view': { id: 'transfer-in-notes:view', name: 'View Transfer In Notes', description: 'View transfer in notes', module: 'Stock & Inventory', action: 'view' },
+  'transfer-in-notes:create': { id: 'transfer-in-notes:create', name: 'Create Transfer In Notes', description: 'Create transfer in notes', module: 'Stock & Inventory', action: 'create' },
+  'transfer-in-notes:edit': { id: 'transfer-in-notes:edit', name: 'Edit Transfer In Notes', description: 'Modify transfer in notes', module: 'Stock & Inventory', action: 'edit' },
+  'transfer-in-notes:delete': { id: 'transfer-in-notes:delete', name: 'Delete Transfer In Notes', description: 'Remove transfer in notes', module: 'Stock & Inventory', action: 'delete' },
+
+  // Stock Adjustment
+  'stock-adjustment:view': { id: 'stock-adjustment:view', name: 'View Stock Adjustments', description: 'View stock adjustments', module: 'Stock & Inventory', action: 'view' },
+  'stock-adjustment:create': { id: 'stock-adjustment:create', name: 'Create Stock Adjustments', description: 'Create stock adjustments', module: 'Stock & Inventory', action: 'create' },
+  'stock-adjustment:edit': { id: 'stock-adjustment:edit', name: 'Edit Stock Adjustments', description: 'Modify stock adjustments', module: 'Stock & Inventory', action: 'edit' },
+  'stock-adjustment:delete': { id: 'stock-adjustment:delete', name: 'Delete Stock Adjustments', description: 'Remove stock adjustments', module: 'Stock & Inventory', action: 'delete' },
+
+  // Stock Reconciliation
+  'stock-reconciliation:view': { id: 'stock-reconciliation:view', name: 'View Stock Reconciliations', description: 'View stock reconciliations', module: 'Stock & Inventory', action: 'view' },
+  'stock-reconciliation:create': { id: 'stock-reconciliation:create', name: 'Create Stock Reconciliations', description: 'Create stock reconciliations', module: 'Stock & Inventory', action: 'create' },
+  'stock-reconciliation:edit': { id: 'stock-reconciliation:edit', name: 'Edit Stock Reconciliations', description: 'Modify stock reconciliations', module: 'Stock & Inventory', action: 'edit' },
+  'stock-reconciliation:delete': { id: 'stock-reconciliation:delete', name: 'Delete Stock Reconciliations', description: 'Remove stock reconciliations', module: 'Stock & Inventory', action: 'delete' },
+
+  // Receipts Management
+  'receipts:view': { id: 'receipts:view', name: 'View Receipts', description: 'View receipts', module: 'Receipt Management', action: 'view' },
+  'receipts:create': { id: 'receipts:create', name: 'Create Receipts', description: 'Create new receipts', module: 'Receipt Management', action: 'create' },
+  'receipts:edit': { id: 'receipts:edit', name: 'Edit Receipts', description: 'Modify receipts', module: 'Receipt Management', action: 'edit' },
+  'receipts:delete': { id: 'receipts:delete', name: 'Delete Receipts', description: 'Remove receipts', module: 'Receipt Management', action: 'delete' },
+
+  // Credit Notes
+  'credit-notes:view': { id: 'credit-notes:view', name: 'View Credit Notes', description: 'View credit notes', module: 'Credit Notes', action: 'view' },
+  'credit-notes:create': { id: 'credit-notes:create', name: 'Create Credit Notes', description: 'Create new credit notes', module: 'Credit Notes', action: 'create' },
+  'credit-notes:edit': { id: 'credit-notes:edit', name: 'Edit Credit Notes', description: 'Modify credit notes', module: 'Credit Notes', action: 'edit' },
+  'credit-notes:delete': { id: 'credit-notes:delete', name: 'Delete Credit Notes', description: 'Remove credit notes', module: 'Credit Notes', action: 'delete' },
+
+  // Customer Returns
+  'customer-returns:view': { id: 'customer-returns:view', name: 'View Customer Returns', description: 'View customer returns', module: 'Customer Returns', action: 'view' },
+  'customer-returns:create': { id: 'customer-returns:create', name: 'Create Customer Returns', description: 'Create new customer returns', module: 'Customer Returns', action: 'create' },
+  'customer-returns:edit': { id: 'customer-returns:edit', name: 'Edit Customer Returns', description: 'Modify customer returns', module: 'Customer Returns', action: 'edit' },
+  'customer-returns:delete': { id: 'customer-returns:delete', name: 'Delete Customer Returns', description: 'Remove customer returns', module: 'Customer Returns', action: 'delete' },
+
+  // Customer Item Codes
+  'customer-item-codes:view': { id: 'customer-item-codes:view', name: 'View Customer Item Codes', description: 'View customer item codes', module: 'Customer Item Codes', action: 'view' },
+  'customer-item-codes:create': { id: 'customer-item-codes:create', name: 'Create Customer Item Codes', description: 'Create new customer item codes', module: 'Customer Item Codes', action: 'create' },
+  'customer-item-codes:edit': { id: 'customer-item-codes:edit', name: 'Edit Customer Item Codes', description: 'Modify customer item codes', module: 'Customer Item Codes', action: 'edit' },
+  'customer-item-codes:delete': { id: 'customer-item-codes:delete', name: 'Delete Customer Item Codes', description: 'Remove customer item codes', module: 'Customer Item Codes', action: 'delete' },
+
+  // Finance & Accounting
+  'accounting:view': { id: 'accounting:view', name: 'View Accounting & Finance', description: 'View financial entries and accounts', module: 'Accounting & Finance', action: 'view' },
+  'accounting:manage': { id: 'accounting:manage', name: 'Manage Accounting & Finance', description: 'Manage accounting transactions and posting rules', module: 'Accounting & Finance', action: 'manage' },
+
+  // Bank Deposits
+  'bank-deposits:view': { id: 'bank-deposits:view', name: 'View Bank Deposits', description: 'View bank deposits', module: 'Bank Deposits', action: 'view' },
+  'bank-deposits:create': { id: 'bank-deposits:create', name: 'Create Bank Deposits', description: 'Create new bank deposits', module: 'Bank Deposits', action: 'create' },
+  'bank-deposits:edit': { id: 'bank-deposits:edit', name: 'Edit Bank Deposits', description: 'Modify bank deposits', module: 'Bank Deposits', action: 'edit' },
+  'bank-deposits:delete': { id: 'bank-deposits:delete', name: 'Delete Bank Deposits', description: 'Remove bank deposits', module: 'Bank Deposits', action: 'delete' },
+
+  // Reports - Stock & Inventory
+  'reports-stock-inventory:view': { id: 'reports-stock-inventory:view', name: 'View Stock Inventory Reports Header', description: 'View stock inventory reports section', module: 'Reports - Stock & Inventory', action: 'view' },
+  'reports-stock-reports:view': { id: 'reports-stock-reports:view', name: 'View Stock Reports', description: 'View detailed stock reports', module: 'Reports - Stock & Inventory', action: 'view' },
+  'reports-stock-movements:view': { id: 'reports-stock-movements:view', name: 'View Stock Movements', description: 'View stock movements report', module: 'Reports - Stock & Inventory', action: 'view' },
+  'reports-stock-enhanced-movements:view': { id: 'reports-stock-enhanced-movements:view', name: 'View Enhanced Movements', description: 'View enhanced stock movements report', module: 'Reports - Stock & Inventory', action: 'view' },
+  'reports-stock-gin-reports:view': { id: 'reports-stock-gin-reports:view', name: 'View GIN Reports', description: 'View goods issue note reports', module: 'Reports - Stock & Inventory', action: 'view' },
+  'reports-stock-inventory-valuation:view': { id: 'reports-stock-inventory-valuation:view', name: 'View Inventory Valuation', description: 'View inventory valuation report', module: 'Reports - Stock & Inventory', action: 'view' },
+
+  // Reports - Sales & Distribution
+  'reports-sales-distribution:view': { id: 'reports-sales-distribution:view', name: 'View Sales & Distribution Reports Header', description: 'View sales & distribution reports section', module: 'Reports - Sales & Distribution', action: 'view' },
+  'reports-sales-general:view': { id: 'reports-sales-general:view', name: 'View General Sales Report', description: 'View general sales summary report', module: 'Reports - Sales & Distribution', action: 'view' },
+  'reports-sales-item-wise:view': { id: 'reports-sales-item-wise:view', name: 'View Item-wise Sales Report', description: 'View item-wise sales report', module: 'Reports - Sales & Distribution', action: 'view' },
+  'reports-sales-by-item:view': { id: 'reports-sales-by-item:view', name: 'View Sales by Item', description: 'View sales breakdown by item', module: 'Reports - Sales & Distribution', action: 'view' },
+  'reports-sales-by-customer:view': { id: 'reports-sales-by-customer:view', name: 'View Sales by Customer', description: 'View sales breakdown by customer', module: 'Reports - Sales & Distribution', action: 'view' },
+  'reports-sales-customer-item:view': { id: 'reports-sales-customer-item:view', name: 'View Customer Item Sales', description: 'View customer item report', module: 'Reports - Sales & Distribution', action: 'view' },
+  'reports-sales-rep-wise:view': { id: 'reports-sales-rep-wise:view', name: 'View Rep-wise Sales', description: 'View sales representative report', module: 'Reports - Sales & Distribution', action: 'view' },
+
+  // Reports - Procurement & Purchasing
+  'reports-procurement-purchasing:view': { id: 'reports-procurement-purchasing:view', name: 'View Procurement & Purchasing Header', description: 'View procurement reports section', module: 'Reports - Procurement & Purchasing', action: 'view' },
+  'reports-purchasing-grn-reports:view': { id: 'reports-purchasing-grn-reports:view', name: 'View Purchasing GRN Reports', description: 'View purchasing GRN report', module: 'Reports - Procurement & Purchasing', action: 'view' },
+  'reports-purchasing-item-wise:view': { id: 'reports-purchasing-item-wise:view', name: 'View Item-wise Purchasing', description: 'View item-wise purchasing report', module: 'Reports - Procurement & Purchasing', action: 'view' },
+  'reports-purchasing-supplier-wise:view': { id: 'reports-purchasing-supplier-wise:view', name: 'View Supplier-wise PO Reports', description: 'View supplier-wise purchase order report', module: 'Reports - Procurement & Purchasing', action: 'view' },
+
+  // Reports - Finance & Commission
+  'reports-finance-commission:view': { id: 'reports-finance-commission:view', name: 'View Finance & Commission Header', description: 'View finance & commission section', module: 'Reports - Finance & Commission', action: 'view' },
+  'reports-expenses:view': { id: 'reports-expenses:view', name: 'View Expenses Report', description: 'View expenses report', module: 'Reports - Finance & Commission', action: 'view' },
+  'reports-salesperson-commission:view': { id: 'reports-salesperson-commission:view', name: 'View Salesperson Commission', description: 'View salesperson commission report', module: 'Reports - Finance & Commission', action: 'view' },
+
+  // System Configuration - Units
+  'units:view': { id: 'units:view', name: 'View Units', description: 'View measurement units', module: 'System Configuration', action: 'view' },
+  'units:create': { id: 'units:create', name: 'Create Units', description: 'Create measurement units', module: 'System Configuration', action: 'create' },
+  'units:edit': { id: 'units:edit', name: 'Edit Units', description: 'Modify measurement units', module: 'System Configuration', action: 'edit' },
+  'units:delete': { id: 'units:delete', name: 'Delete Units', description: 'Remove measurement units', module: 'System Configuration', action: 'delete' },
+
+  // System Configuration - Return Types
+  'return-types:view': { id: 'return-types:view', name: 'View Return Types', description: 'View return types', module: 'System Configuration', action: 'view' },
+  'return-types:create': { id: 'return-types:create', name: 'Create Return Types', description: 'Create return types', module: 'System Configuration', action: 'create' },
+  'return-types:edit': { id: 'return-types:edit', name: 'Edit Return Types', description: 'Modify return types', module: 'System Configuration', action: 'edit' },
+  'return-types:delete': { id: 'return-types:delete', name: 'Delete Return Types', description: 'Remove return types', module: 'System Configuration', action: 'delete' }
 }
 
 // Get permissions by module
