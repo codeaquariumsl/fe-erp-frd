@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { ERPLayout } from "@/components/layouts/erp-layout"
@@ -16,8 +16,10 @@ import { cn } from "@/lib/utils"
 import { reportsApi, usersApi } from "@/lib/api"
 import { generateRepWiseSalesOrdersReportExcel } from "@/lib/excel-generator"
 import { DocLink } from "@/components/reports/doc-link"
+import { useAuth } from "@/lib/auth"
 
 export default function RepWiseSalesOrdersReportPage() {
+    const { user } = useAuth()
     const [loading, setLoading] = useState(false)
     const [reportData, setReportData] = useState<any>(null)
     const [expandedReps, setExpandedReps] = useState<Record<number, boolean>>({})
@@ -27,6 +29,14 @@ export default function RepWiseSalesOrdersReportPage() {
     const [selectedSalesRep, setSelectedSalesRep] = useState<string>("all")
     const [selectedStatus, setSelectedStatus] = useState<string>("all")
     const [salesReps, setSalesReps] = useState<any[]>([])
+
+    const userRole = (
+        user?.Role?.name ||
+        (typeof (user as any)?.role === 'string' ? (user as any)?.role : (user as any)?.role?.name) ||
+        (user as any)?.roleName ||
+        ""
+    ).toString().toLowerCase()
+    const isSalesExec = userRole === 'sales_exec'
 
     useEffect(() => {
         usersApi.getSalesPersons().then(d => setSalesReps(Array.isArray(d) ? d : [])).catch(console.error)
@@ -60,9 +70,15 @@ export default function RepWiseSalesOrdersReportPage() {
         }
     }
 
+    const filteredSalesReps = salesReps.filter(s => !(isSalesExec && Number(s.id) === 6))
+
+    const filteredReportData = reportData
+        ? reportData.filter((rep: any) => !(isSalesExec && (Number(rep.salesRepId) === 6 || Number(rep.id) === 6)))
+        : null
+
     let grandTotalValue = 0, grandTotalCount = 0, approvedTotalValue = 0, approvedTotalCount = 0, pendingTotalValue = 0, pendingTotalCount = 0
-    if (reportData) {
-        reportData.forEach((rep: any) => {
+    if (filteredReportData) {
+        filteredReportData.forEach((rep: any) => {
             if (rep.orders) {
                 rep.orders.forEach((order: any) => {
                     const val = parseFloat(order.totalAmount || 0)
@@ -87,8 +103,8 @@ export default function RepWiseSalesOrdersReportPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {reportData && (
-                            <Button variant="outline" size="sm" onClick={() => generateRepWiseSalesOrdersReportExcel(reportData)}>
+                        {filteredReportData && (
+                            <Button variant="outline" size="sm" onClick={() => generateRepWiseSalesOrdersReportExcel(filteredReportData)}>
                                 <Download className="mr-1.5 h-3.5 w-3.5" />Excel
                             </Button>
                         )}
@@ -131,7 +147,7 @@ export default function RepWiseSalesOrdersReportPage() {
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Sales Reps" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Sales Reps</SelectItem>
-                                        {salesReps.map((s) => <SelectItem key={s.id} value={s.id.toString()}>{s.fullName}</SelectItem>)}
+                                        {filteredSalesReps.map((s) => <SelectItem key={s.id} value={s.id.toString()}>{s.fullName}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -152,7 +168,7 @@ export default function RepWiseSalesOrdersReportPage() {
                     </CardContent>
                 </Card>
 
-                {reportData && (
+                {filteredReportData && (
                     <>
                         {/* KPI Cards */}
                         <div className="grid gap-3 md:grid-cols-3">
@@ -205,7 +221,7 @@ export default function RepWiseSalesOrdersReportPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {reportData.map((rep: any) => (
+                                        {filteredReportData.map((rep: any) => (
                                             <>
                                                 <TableRow
                                                     key={rep.salesRepId}
@@ -260,7 +276,7 @@ export default function RepWiseSalesOrdersReportPage() {
                                                 )}
                                             </>
                                         ))}
-                                        {reportData.length === 0 && (
+                                        {filteredReportData.length === 0 && (
                                             <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No data found.</TableCell></TableRow>
                                         )}
                                     </TableBody>
@@ -270,7 +286,7 @@ export default function RepWiseSalesOrdersReportPage() {
                     </>
                 )}
 
-                {!reportData && !loading && (
+                {!filteredReportData && !loading && (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                         <div className="p-4 rounded-full bg-muted mb-4"><Users className="h-8 w-8 text-muted-foreground" /></div>
                         <p className="text-sm font-medium text-muted-foreground">Set filters and click Generate</p>
