@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { ERPLayout } from "@/components/layouts/erp-layout"
@@ -14,14 +14,24 @@ import { CalendarIcon, Loader2, Download, Search, Users, TrendingUp, DollarSign,
 import { cn } from "@/lib/utils"
 import { reportsApi, usersApi } from "@/lib/api"
 import { generateRepWiseSalesReportExcel } from "@/lib/excel-generator"
+import { useAuth } from "@/lib/auth"
 
 export default function RepWiseSalesReportPage() {
+    const { user } = useAuth()
     const [loading, setLoading] = useState(false)
     const [reportData, setReportData] = useState<any>(null)
     const [startDate, setStartDate] = useState<Date>()
     const [endDate, setEndDate] = useState<Date>()
     const [selectedSalesRep, setSelectedSalesRep] = useState<string>("all")
     const [salesReps, setSalesReps] = useState<any[]>([])
+
+    const userRole = (
+        user?.Role?.name ||
+        (typeof (user as any)?.role === 'string' ? (user as any)?.role : (user as any)?.role?.name) ||
+        (user as any)?.roleName ||
+        ""
+    ).toString().toLowerCase()
+    const isSalesExec = userRole === 'sales_exec'
 
     useEffect(() => {
         usersApi.getSalesPersons().then(d => setSalesReps(Array.isArray(d) ? d : [])).catch(console.error)
@@ -42,9 +52,15 @@ export default function RepWiseSalesReportPage() {
 
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(amount || 0)
 
-    const grandTotal = reportData?.reduce((acc: number, item: any) => acc + item.totalSales, 0) || 0
-    const grandOutstanding = reportData?.reduce((acc: number, item: any) => acc + item.totalOutstanding, 0) || 0
-    const grandOverdue = reportData?.reduce((acc: number, item: any) => acc + item.totalOverDue, 0) || 0
+    const filteredSalesReps = salesReps.filter(s => !(isSalesExec && Number(s.id) === 6))
+
+    const filteredReportData = reportData
+        ? reportData.filter((rep: any) => !(isSalesExec && (Number(rep.salesRepId) === 6 || Number(rep.id) === 6)))
+        : null
+
+    const grandTotal = filteredReportData?.reduce((acc: number, item: any) => acc + item.totalSales, 0) || 0
+    const grandOutstanding = filteredReportData?.reduce((acc: number, item: any) => acc + item.totalOutstanding, 0) || 0
+    const grandOverdue = filteredReportData?.reduce((acc: number, item: any) => acc + item.totalOverDue, 0) || 0
 
     return (
         <ERPLayout>
@@ -59,8 +75,8 @@ export default function RepWiseSalesReportPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {reportData && (
-                            <Button variant="outline" size="sm" onClick={() => generateRepWiseSalesReportExcel(reportData)}>
+                        {filteredReportData && (
+                            <Button variant="outline" size="sm" onClick={() => generateRepWiseSalesReportExcel(filteredReportData)}>
                                 <Download className="mr-1.5 h-3.5 w-3.5" />Excel
                             </Button>
                         )}
@@ -103,7 +119,7 @@ export default function RepWiseSalesReportPage() {
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Sales Reps" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Sales Reps</SelectItem>
-                                        {salesReps.map((s) => <SelectItem key={s.id} value={s.id.toString()}>{s.fullName}</SelectItem>)}
+                                        {filteredSalesReps.map((s) => <SelectItem key={s.id} value={s.id.toString()}>{s.fullName}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -111,7 +127,7 @@ export default function RepWiseSalesReportPage() {
                     </CardContent>
                 </Card>
 
-                {reportData && (
+                {filteredReportData && (
                     <>
                         {/* KPI Cards */}
                         <div className="grid gap-3 md:grid-cols-3">
@@ -148,7 +164,7 @@ export default function RepWiseSalesReportPage() {
                         <Card>
                             <div className="flex items-center justify-between px-4 py-2.5 border-b">
                                 <span className="text-sm font-semibold">Sales Representative Performance</span>
-                                <span className="text-xs text-muted-foreground">{reportData.length} reps</span>
+                                <span className="text-xs text-muted-foreground">{filteredReportData.length} reps</span>
                             </div>
                             <div className="overflow-x-auto">
                                 <Table className="text-xs">
@@ -162,7 +178,7 @@ export default function RepWiseSalesReportPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {reportData.map((rep: any) => (
+                                        {filteredReportData.map((rep: any) => (
                                             <TableRow key={rep.salesRepId} className="hover:bg-muted/30 even:bg-muted/10">
                                                 <TableCell className="py-1.5 font-semibold">{rep.salesRepName}</TableCell>
                                                 <TableCell className="py-1.5 text-right">{rep.invoices.length}</TableCell>
@@ -178,7 +194,7 @@ export default function RepWiseSalesReportPage() {
                     </>
                 )}
 
-                {!reportData && !loading && (
+                {!filteredReportData && !loading && (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                         <div className="p-4 rounded-full bg-muted mb-4"><Users className="h-8 w-8 text-muted-foreground" /></div>
                         <p className="text-sm font-medium text-muted-foreground">Set filters and click Generate</p>
