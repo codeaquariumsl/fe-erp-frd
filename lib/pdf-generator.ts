@@ -1763,3 +1763,37 @@ export const generateSupplierWisePOPDF = (data: any, startDate?: Date, endDate?:
     doc.save(`Supplier-PO-Analysis-${stats.supplierName.replace(/[^a-z0-9]/gi, '_')}-${format(new Date(), 'yyyyMMdd')}.pdf`);
   }
 };
+
+export const generateFreeIssuePDF = (
+  items: any[],
+  startDate?: Date,
+  endDate?: Date
+) => {
+  const doc = new jsPDF();
+  const periodStr = `${startDate ? format(startDate, 'yyyy-MM-dd') : 'All Time'} to ${endDate ? format(endDate, 'yyyy-MM-dd') : 'Present'}`;
+
+  doc.setFontSize(16);
+  doc.setTextColor(40, 40, 40);
+  doc.text('Free Issue Items Report', 14, 15);
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm')} | Period: ${periodStr}`, 14, 22);
+
+  const headers = ['Invoice Date', 'Invoice No', 'Customer', 'Item Name', 'Billed Qty', 'Free Qty', 'Free Value (LKR)'];
+  const rows = items.map((row) => [
+    row.invoiceDate ? format(new Date(row.invoiceDate), 'yyyy-MM-dd') : '-',
+    row.invoiceNumber || '-',
+    (row.customerName || '-').substring(0, 18),
+    (row.itemName || '-').substring(0, 22),
+    String(row.billedQty || 0),
+    String(row.freeQty || 0),
+    (row.totalFreeValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+  ]);
+
+  drawTable(doc, 14, 28, headers, rows, [25, 25, 35, 40, 18, 18, 25], {
+    alignments: ['left', 'left', 'left', 'left', 'right', 'right', 'right'],
+    headerColor: [147, 51, 234], // Purple header
+  });
+
+  doc.save(`Free_Issue_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
+};

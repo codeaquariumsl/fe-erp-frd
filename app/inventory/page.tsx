@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ERPLayout } from "@/components/layouts/erp-layout"
 import { Plus, Search, MoreHorizontal, Package, AlertTriangle, Thermometer, ArrowRightLeft, Eye, MapPin, Loader2 } from "lucide-react"
 import { useStockOperations } from "@/hooks/use-stock-operations"
-import { itemsApi, storesApi, categoriesApi } from "@/lib/api"
+import { itemsApi, storesApi, categoriesApi, salesOrdersApi } from "@/lib/api"
 
 export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -48,11 +48,12 @@ export default function InventoryPage() {
       setLoading(true)
       try {
         const locationId = localStorage.getItem("selectedLocationId")
-        // Load stores and categories first
-        const [storesResponse, stockResponse, categoriesResponse] = await Promise.all([
+        // Load stores, stock, categories, and approved sales orders
+        const [storesResponse, stockResponse, categoriesResponse, approvedSalesOrdersResponse] = await Promise.all([
           storesApi.getAll(),
           getAllStock({ locationId: Number(locationId) || 1 }),
-          categoriesApi.getAll()
+          categoriesApi.getAll(),
+          salesOrdersApi.getAll({ status: "Approved", limit: 1000 }).catch(() => ({ data: [] }))
         ])
 
         const storesData = Array.isArray(storesResponse) ? storesResponse : []
@@ -62,6 +63,23 @@ export default function InventoryPage() {
         setCategories(categoriesData)
 
         const stockData = stockResponse.success ? stockResponse.data : []
+
+        // Calculate reserved quantity per item from approved sales orders
+        const reservedQtyMap: Record<number, number> = {}
+        const approvedOrders = (approvedSalesOrdersResponse as any)?.data || []
+        if (Array.isArray(approvedOrders)) {
+          approvedOrders.forEach((order: any) => {
+            if (order.items && Array.isArray(order.items)) {
+              order.items.forEach((soItem: any) => {
+                const itemId = Number(soItem.itemId)
+                const qty = Number(soItem.qty || 0)
+                if (itemId) {
+                  reservedQtyMap[itemId] = (reservedQtyMap[itemId] || 0) + qty
+                }
+              })
+            }
+          })
+        }
 
         // Group stock data by itemId to create inventory summary
         const itemGroups = stockData.reduce((acc: any, stock: any) => {
@@ -126,6 +144,9 @@ export default function InventoryPage() {
           else if (group.totalQty < (item.reorderLevelQty || 50)) status = "Low Stock"
           else if (group.totalQty > (item.overstockLevelQty || 1000)) status = "Overstock"
 
+          const reservedQty = reservedQtyMap[item.id] || 0
+          const balance = (group.totalQty || 0) - reservedQty
+
           return {
             id: item.sku,
             itemId: item.id,
@@ -133,6 +154,9 @@ export default function InventoryPage() {
             barcode: item.barcode,
             category: category?.name || "Unknown",
             quantity: group.totalQty,
+            quantityInHand: group.totalQty,
+            reservedQty,
+            balance,
             unit: item.unit || "box",
             location: primaryStore?.storeName || "Multiple Locations",
             locationCount: group.stores.length + group.lorries.length,
@@ -182,6 +206,9 @@ export default function InventoryPage() {
           else if (group.quantity < (item.reorderLevelQty || 50)) status = "Low Stock"
           else if (group.quantity > (item.overstockLevelQty || 1000)) status = "Overstock"
 
+          const reservedQty = reservedQtyMap[item.id] || 0
+          const balance = (group.quantity || 0) - reservedQty
+
           return {
             id: `${item.sku}-${group.storeId}`,
             itemId: item.id,
@@ -190,6 +217,9 @@ export default function InventoryPage() {
             barcode: item.barcode,
             category: category?.name || "Unknown",
             quantity: group.quantity,
+            quantityInHand: group.quantity,
+            reservedQty,
+            balance,
             unit: item.unit || "box",
             storeName: group.store.name,
             storeCapacity: group.store.capacity,
@@ -231,6 +261,9 @@ export default function InventoryPage() {
           if (group.quantity === 0) status = "Empty"
           else if (group.quantity < (item.reorderLevelQty || 50)) status = "Low Stock"
 
+          const reservedQty = reservedQtyMap[item.id] || 0
+          const balance = (group.quantity || 0) - reservedQty
+
           return {
             id: `${item.sku}-${group.lorryId}`,
             itemId: item.id,
@@ -239,6 +272,9 @@ export default function InventoryPage() {
             barcode: item.barcode,
             category: category?.name || "Unknown",
             quantity: group.quantity,
+            quantityInHand: group.quantity,
+            reservedQty,
+            balance,
             unit: item.unit || "box",
             vehicleNumber: group.lorry.vehicleNumber,
             vehicleType: group.lorry.vehicleType,
@@ -551,7 +587,9 @@ export default function InventoryPage() {
                   <TableRow>
                     <TableHead>Item</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Quantity</TableHead>
+                    <TableHead>Qty in Hand</TableHead>
+                    <TableHead>Reserved</TableHead>
+                    <TableHead>Balance</TableHead>
                     {viewMode === "stores" && <TableHead>Store</TableHead>}
                     {viewMode === "lorries" && <TableHead>Vehicle</TableHead>}
                     {viewMode === "lorries" && <TableHead>Driver</TableHead>}
@@ -565,7 +603,7 @@ export default function InventoryPage() {
                 <TableBody>
                   {filteredInventory.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                         {searchTerm ? 'No items found matching your search.' : 'No inventory items found.'}
                       </TableCell>
                     </TableRow>
@@ -580,8 +618,18 @@ export default function InventoryPage() {
                         </TableCell>
                         <TableCell className="py-2">{item.category}</TableCell>
                         <TableCell className="py-2">
-                          <span className={item.quantity < 50 ? "text-red-600 font-medium" : ""}>
-                            {item.quantity} {item.unit}
+                          <span className={(item.quantityInHand ?? item.quantity) < 50 ? "text-red-600 font-medium" : "font-medium"}>
+                            {item.quantityInHand ?? item.quantity} {item.unit}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <span className={(item.reservedQty ?? 0) > 0 ? "text-orange-600 font-medium" : "text-gray-500"}>
+                            {item.reservedQty ?? 0} {item.unit}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <span className={(item.balance ?? item.quantity) < 0 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
+                            {item.balance ?? item.quantity} {item.unit}
                           </span>
                         </TableCell>
                         {/* Store-specific columns */}
@@ -650,14 +698,14 @@ export default function InventoryPage() {
                               <div className={item.quantity < (item.reorderLevel || 0) ? "text-red-600 font-medium" : ""}>
                                 {item.quantity}/{item.reorderLevel || 0}
                               </div>
-                              <div className="text-xs text-muted-foreground">{item.unit}</div>
+                              {/* <div className="text-xs text-muted-foreground">{item.unit}</div> */}
                             </div>
                           </TableCell>
                         )}
                         <TableCell className="py-2">
                           <div className="text-sm">
-                            <div className="font-medium">LKR {(item.quantity * item.purchasePrice).toLocaleString()}</div>
-                            <div className="text-xs text-muted-foreground">@ {item.purchasePrice}/unit</div>
+                            <div className="font-medium">{Number(item.quantity * item.purchasePrice).toFixed(2)}</div>
+                            {/* <div className="text-xs text-muted-foreground">@ {item.purchasePrice}/unit</div> */}
                           </div>
                         </TableCell>
                         <TableCell className="py-2">{getStatusBadge(item.status)}</TableCell>
@@ -824,37 +872,53 @@ export default function InventoryPage() {
               </div>
 
               {selectedItem && (
-                <div className="grid grid-cols-4 gap-4 pt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 pt-4">
                   <Card>
-                    <CardContent className="pt-4">
-                      <div className="text-2xl font-bold">
-                        {selectedItem.quantity}
+                    <CardContent className="pt-4 px-3 pb-3">
+                      <div className="text-xl font-bold">
+                        {selectedItem.quantityInHand ?? selectedItem.quantity}
                       </div>
-                      <p className="text-sm text-muted-foreground">Total Quantity ({selectedItem.unit})</p>
+                      <p className="text-xs text-muted-foreground">Qty in Hand ({selectedItem.unit})</p>
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="pt-4">
-                      <div className="text-2xl font-bold">
+                    <CardContent className="pt-4 px-3 pb-3">
+                      <div className="text-xl font-bold text-orange-600">
+                        {selectedItem.reservedQty ?? 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Reserved ({selectedItem.unit})</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 px-3 pb-3">
+                      <div className={`text-xl font-bold ${(selectedItem.balance ?? selectedItem.quantity) < 0 ? "text-red-600" : "text-green-600"}`}>
+                        {selectedItem.balance ?? selectedItem.quantity}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Balance ({selectedItem.unit})</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 px-3 pb-3">
+                      <div className="text-xl font-bold">
                         {selectedItem.weight?.toFixed(1) || 0} kg
                       </div>
-                      <p className="text-sm text-muted-foreground">Total Weight</p>
+                      <p className="text-xs text-muted-foreground">Total Weight</p>
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="pt-4">
-                      <div className="text-2xl font-bold">
+                    <CardContent className="pt-4 px-3 pb-3">
+                      <div className="text-xl font-bold">
                         {((selectedItem.stores?.length || 0) + (selectedItem.lorries?.length || 0))}
                       </div>
-                      <p className="text-sm text-muted-foreground">Locations</p>
+                      <p className="text-xs text-muted-foreground">Locations</p>
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="pt-4">
-                      <div className="text-2xl font-bold">
-                        LKR {(selectedItem.quantity * selectedItem.purchasePrice).toLocaleString()}
+                    <CardContent className="pt-4 px-3 pb-3">
+                      <div className="text-xl font-bold">
+                        LKR {((selectedItem.quantityInHand ?? selectedItem.quantity) * selectedItem.purchasePrice).toLocaleString()}
                       </div>
-                      <p className="text-sm text-muted-foreground">Total Value</p>
+                      <p className="text-xs text-muted-foreground">Total Value</p>
                     </CardContent>
                   </Card>
                 </div>

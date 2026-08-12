@@ -3886,6 +3886,7 @@ function transformInvoice(backendInvoice: InvoiceResponse): Invoice {
       itemId: item.itemId,
       code: item.code,
       qty: item.qty,
+      freeQty: Number((item as any).freeQty || (item as any).freeIssueQty || 0),
       price: item.price,
       discount: item.discount,
       isTaxItem: item.isTaxItem,

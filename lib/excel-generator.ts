@@ -901,3 +901,62 @@ export const generateSupplierWisePOExcel = (data: any, startDate?: Date, endDate
         XLSX.writeFile(wb, fileName);
     }
 };
+
+export const generateFreeIssueExcel = (
+    items: any[],
+    startDate?: Date,
+    endDate?: Date
+) => {
+    const wb = XLSX.utils.book_new();
+    const periodStr = `${startDate ? format(startDate, 'yyyy-MM-dd') : 'All Time'} to ${endDate ? format(endDate, 'yyyy-MM-dd') : 'Present'}`;
+
+    const wsData: any[][] = [
+        ['FREE ISSUE ITEMS REPORT'],
+        ['Generated On:', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        ['Period:', periodStr],
+        [],
+        ['Invoice Date', 'Invoice No', 'Customer', 'Sales Rep', 'Item Code', 'Item Name', 'Billed Qty', 'Free Qty', 'Unit Price (LKR)', 'Free Value (LKR)'],
+    ];
+
+    let totalFreeQty = 0;
+    let totalFreeValue = 0;
+
+    items.forEach((row) => {
+        const fQty = Number(row.freeQty || 0);
+        const fVal = Number(row.totalFreeValue || 0);
+        totalFreeQty += fQty;
+        totalFreeValue += fVal;
+        wsData.push([
+            row.invoiceDate ? format(new Date(row.invoiceDate), 'yyyy-MM-dd') : '-',
+            row.invoiceNumber || '-',
+            row.customerName || '-',
+            row.salesPersonName || '-',
+            row.itemCode || '-',
+            row.itemName || '-',
+            row.billedQty || 0,
+            fQty,
+            row.price || 0,
+            fVal,
+        ]);
+    });
+
+    wsData.push([]);
+    wsData.push(['Total', '', '', '', '', '', '', totalFreeQty, '', totalFreeValue]);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [
+        { wch: 12 },
+        { wch: 18 },
+        { wch: 25 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 30 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 18 },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Free Issue Report');
+    XLSX.writeFile(wb, `Free_Issue_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+};

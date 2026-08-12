@@ -57,6 +57,7 @@ import {
   Droplets,
   Leaf,
   ArrowRightLeft,
+  Gift,
 } from "lucide-react"
 
 interface NavigationItem {
@@ -452,6 +453,7 @@ const navigation: NavigationItem[] = [
       "reports-sales-by-customer:view",
       "reports-sales-customer-item:view",
       "reports-sales-rep-wise:view",
+      "reports-sales-free-issue:view",
       "reports-procurement-purchasing:view",
       "reports-purchasing-grn-reports:view",
       "reports-purchasing-item-wise:view",
@@ -536,6 +538,12 @@ const navigation: NavigationItem[] = [
         href: "/reports/rep-wise-orders",
         icon: Users,
         permissions: ["reports-sales-rep-wise:view"],
+      },
+      {
+        name: "Free Issue Items",
+        href: "/reports/free-issue",
+        icon: Gift,
+        permissions: ["reports-sales-free-issue:view", "reports-sales-item-wise:view"],
       },
       {
         name: "Procurement & Purchasing",

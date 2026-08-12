@@ -109,6 +109,7 @@ const ALL_ROUTES = [
   { href: "/reports/sales-by-item", permissions: ["reports-sales-item-wise:view"] },
   { href: "/reports/rep-wise-sales", permissions: ["reports-sales-rep-wise:view"] },
   { href: "/reports/rep-wise-orders", permissions: ["reports-sales-rep-wise:view"] },
+  { href: "/reports/free-issue", permissions: ["reports-sales-free-issue:view", "reports-sales-item-wise:view"] },
   { href: "/reports/grn", permissions: ["reports-purchasing-grn-reports:view"] },
   { href: "/reports/item-wise-purchasing", permissions: ["reports-purchasing-item-wise:view"] },
   { href: "/reports/supplier-wise-po", permissions: ["reports-purchasing-supplier-wise:view"] },

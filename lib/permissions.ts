@@ -646,6 +646,7 @@ export const PERMISSIONS: Record<string, Permission> = {
   'reports-sales-by-customer:view': { id: 'reports-sales-by-customer:view', name: 'View Sales by Customer', description: 'View sales breakdown by customer', module: 'Reports - Sales & Distribution', action: 'view' },
   'reports-sales-customer-item:view': { id: 'reports-sales-customer-item:view', name: 'View Customer Item Sales', description: 'View customer item report', module: 'Reports - Sales & Distribution', action: 'view' },
   'reports-sales-rep-wise:view': { id: 'reports-sales-rep-wise:view', name: 'View Rep-wise Sales', description: 'View sales representative report', module: 'Reports - Sales & Distribution', action: 'view' },
+  'reports-sales-free-issue:view': { id: 'reports-sales-free-issue:view', name: 'View Free Issue Items Report', description: 'View free issue items report', module: 'Reports - Sales & Distribution', action: 'view' },
 
   // Reports - Procurement & Purchasing
   'reports-procurement-purchasing:view': { id: 'reports-procurement-purchasing:view', name: 'View Procurement & Purchasing Header', description: 'View procurement reports section', module: 'Reports - Procurement & Purchasing', action: 'view' },
