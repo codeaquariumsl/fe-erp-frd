@@ -82,6 +82,7 @@ export default function InvoicesPage() {
     // Search and Filter states
     const [searchTerm, setSearchTerm] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("all")
+    const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>("all")
     const [customerFilter, setCustomerFilter] = useState<string>("all")
     const [salesPersonFilter, setSalesPersonFilter] = useState<string>("all")
     const [dateFromFilter, setDateFromFilter] = useState<string>("")
@@ -95,7 +96,7 @@ export default function InvoicesPage() {
     // Load invoices whenever page / filters change
     useEffect(() => {
         fetchInvoices()
-    }, [currentPage, itemsPerPage, searchTerm, statusFilter, customerFilter, salesPersonFilter, dateFromFilter, dateToFilter])
+    }, [currentPage, itemsPerPage, searchTerm, statusFilter, paymentStatusFilter, customerFilter, salesPersonFilter, dateFromFilter, dateToFilter])
 
     // Load static lookup data once on mount
     useEffect(() => {
@@ -129,6 +130,7 @@ export default function InvoicesPage() {
                 limit: itemsPerPage,
                 search: searchTerm || undefined,
                 status: statusFilter !== "all" ? statusFilter : undefined,
+                paymentStatus: paymentStatusFilter !== "all" ? paymentStatusFilter : undefined,
                 customerId: customerFilter !== "all" ? customerFilter : undefined,
                 salesPersonId: salesPersonFilter !== "all" ? salesPersonFilter : undefined,
                 dateFrom: dateFromFilter || undefined,
@@ -194,6 +196,7 @@ export default function InvoicesPage() {
     const clearFilters = () => {
         setSearchTerm("")
         setStatusFilter("all")
+        setPaymentStatusFilter("all")
         setCustomerFilter("all")
         setSalesPersonFilter("all")
         setDateFromFilter("")
@@ -214,6 +217,24 @@ export default function InvoicesPage() {
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="approved">Approved</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    )
+
+    // Payment Status Filter Component
+    const PaymentStatusFilter = () => (
+        <div className="space-y-1 w-full">
+            <Label className="text-xs font-medium text-gray-500">Payment Status</Label>
+            <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                <SelectTrigger className="h-8">
+                    <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                    <SelectItem value="unpaid">Unpaid</SelectItem>
                 </SelectContent>
             </Select>
         </div>
@@ -336,7 +357,7 @@ export default function InvoicesPage() {
                 <span>
                     Showing {startIndex}-{endIndex} of {totalInvoices} invoices
                 </span>
-                {(searchTerm || statusFilter !== "all" || customerFilter !== "all" || salesPersonFilter !== "all" || dateFromFilter || dateToFilter) && (
+                {(searchTerm || statusFilter !== "all" || paymentStatusFilter !== "all" || customerFilter !== "all" || salesPersonFilter !== "all" || dateFromFilter || dateToFilter) && (
                     <span className="flex items-center">
                         <Filter className="mr-1 h-3 w-3" />
                         Filters active
@@ -971,6 +992,42 @@ export default function InvoicesPage() {
         }
     }
 
+    const getPaymentStatusBadge = (invoice: Invoice) => {
+        if (invoice.status === "Cancelled") {
+            return (
+                <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300">
+                    Cancelled
+                </Badge>
+            )
+        }
+
+        const total = invoice.totalAmount || 0
+        const settled = (invoice.paidAmount || 0) + (invoice.setoffAmount || 0)
+        const due = total - settled
+
+        if (total > 0 && due <= 0.01) {
+            return (
+                <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+                    Paid
+                </Badge>
+            )
+        }
+
+        if (settled > 0.01) {
+            return (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">
+                    Partially Paid
+                </Badge>
+            )
+        }
+
+        return (
+            <Badge variant="secondary" className="bg-red-100 text-red-800 border-red-200">
+                Unpaid
+            </Badge>
+        )
+    }
+
     // if (loading) {
     //     return <ERPLayout><InvoicesLoading /></ERPLayout>
     // }
@@ -1600,6 +1657,7 @@ export default function InvoicesPage() {
                                     </div>
                                 </div>
                                 <StatusFilter />
+                                <PaymentStatusFilter />
                                 <CustomerFilter />
                                 <SalesPersonFilter />
                                 <DateFilter
@@ -1612,7 +1670,7 @@ export default function InvoicesPage() {
                                     value={dateToFilter}
                                     onChange={setDateToFilter}
                                 />
-                                {(searchTerm || statusFilter !== "all" || customerFilter !== "all" || salesPersonFilter !== "all" || dateFromFilter || dateToFilter) && (
+                                {(searchTerm || statusFilter !== "all" || paymentStatusFilter !== "all" || customerFilter !== "all" || salesPersonFilter !== "all" || dateFromFilter || dateToFilter) && (
                                     <div className="flex items-end h-full">
                                         <Button
                                             variant="ghost"
@@ -1638,6 +1696,7 @@ export default function InvoicesPage() {
                                     <TableHead>Sales Order</TableHead>
                                     <TableHead>Delivery Order</TableHead>
                                     <TableHead>Amount (LKR)</TableHead>
+                                    <TableHead>Payment Status</TableHead>
                                     <TableHead>DO Status</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Actions</TableHead>
@@ -1674,6 +1733,7 @@ export default function InvoicesPage() {
                                         <TableCell className="py-2 text-right">
                                             {Number(invoice.totalAmount || 0.00).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </TableCell>
+                                        <TableCell className="py-2">{getPaymentStatusBadge(invoice)}</TableCell>
                                         <TableCell className="py-2">{getStatusBadge(invoice.DeliveryOrder?.status ? invoice.DeliveryOrder.status : "Pending")}</TableCell>
                                         <TableCell className="py-2">{getStatusBadge(invoice.status || "Pending")}</TableCell>
                                         <TableCell className="py-2">
@@ -1743,21 +1803,21 @@ export default function InvoicesPage() {
                                 {invoices.length === 0 && (
                                     <TableRow>
                                         {loading ?
-                                            <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                                            <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                                                 {"Loading Invoices..."}
                                             </TableCell>
                                             :
-                                            <TableCell colSpan={8} className="text-center py-8">
+                                            <TableCell colSpan={10} className="text-center py-8">
                                                 {totalInvoices === 0 ? (
                                                     <div className="flex flex-col items-center space-y-2">
                                                         <FileText className="h-8 w-8 text-muted-foreground" />
                                                         <p className="text-muted-foreground">
-                                                            {(searchTerm || statusFilter !== "all" || customerFilter !== "all" || dateFromFilter || dateToFilter)
+                                                            {(searchTerm || statusFilter !== "all" || paymentStatusFilter !== "all" || customerFilter !== "all" || salesPersonFilter !== "all" || dateFromFilter || dateToFilter)
                                                                 ? "No invoices match your search criteria"
                                                                 : "No invoices found"
                                                             }
                                                         </p>
-                                                        {(searchTerm || statusFilter !== "all" || customerFilter !== "all" || dateFromFilter || dateToFilter) && (
+                                                        {(searchTerm || statusFilter !== "all" || paymentStatusFilter !== "all" || customerFilter !== "all" || salesPersonFilter !== "all" || dateFromFilter || dateToFilter) && (
                                                             <Button variant="outline" onClick={clearFilters} className="mt-2">
                                                                 Clear filters
                                                             </Button>

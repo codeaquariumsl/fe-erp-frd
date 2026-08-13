@@ -3914,6 +3914,7 @@ export const invoicesApi = {
     limit?: number
     search?: string
     status?: string
+    paymentStatus?: string
     customerId?: string | number
     salesPersonId?: string | number
     dateFrom?: string
@@ -3925,6 +3926,7 @@ export const invoicesApi = {
     if (params?.limit) qp.append("limit", params.limit.toString())
     if (params?.search) qp.append("search", params.search)
     if (params?.status) qp.append("status", params.status)
+    if (params?.paymentStatus) qp.append("paymentStatus", params.paymentStatus)
     if (params?.customerId) qp.append("customerId", params.customerId.toString())
     if (params?.salesPersonId) qp.append("salesPersonId", params.salesPersonId.toString())
     if (params?.dateFrom) qp.append("dateFrom", params.dateFrom)
