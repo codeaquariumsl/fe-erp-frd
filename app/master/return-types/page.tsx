@@ -52,7 +52,7 @@ import { ERPLayout } from "@/components/layouts/erp-layout"
 
 const PRIORITY_COLORS = {
   1: "bg-red-100 text-red-800",
-  2: "bg-red-100 text-red-800", 
+  2: "bg-red-100 text-red-800",
   3: "bg-orange-100 text-orange-800",
   4: "bg-orange-100 text-orange-800",
   5: "bg-yellow-100 text-yellow-800",
@@ -65,7 +65,7 @@ const PRIORITY_COLORS = {
 
 const getPriorityColor = (priority: number) => {
   if (priority >= 9) return "bg-red-100 text-red-800"
-  if (priority >= 7) return "bg-orange-100 text-orange-800" 
+  if (priority >= 7) return "bg-orange-100 text-orange-800"
   if (priority >= 5) return "bg-yellow-100 text-yellow-800"
   if (priority >= 3) return "bg-blue-100 text-blue-800"
   return "bg-green-100 text-green-800"
@@ -87,7 +87,7 @@ export default function ReturnTypesPage() {
   const [returnTypes, setReturnTypes] = useState<ReturnType[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterActive, setFilterActive] = useState<string>("ALL")
+  const [filterActive, setFilterActive] = useState<string>("active")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingReturnType, setEditingReturnType] = useState<ReturnType | null>(null)
   const [viewReturnType, setViewReturnType] = useState<ReturnType | null>(null)
@@ -198,7 +198,7 @@ export default function ReturnTypesPage() {
 
   const clearFilters = () => {
     setSearchTerm("")
-    setFilterActive("ALL")
+    setFilterActive("active")
   }
 
   const hasActiveFilters = searchTerm || filterActive
@@ -362,7 +362,7 @@ export default function ReturnTypesPage() {
                 </div>
               </div>
 
-              <Select value={filterActive} onValueChange={setFilterActive}>
+              {/* <Select value={filterActive} onValueChange={setFilterActive}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -371,7 +371,7 @@ export default function ReturnTypesPage() {
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
-              </Select>
+              </Select> */}
 
               {hasActiveFilters && (
                 <Button variant="outline" onClick={clearFilters}>
