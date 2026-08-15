@@ -452,6 +452,7 @@ const navigation: NavigationItem[] = [
       "reports-sales-by-item:view",
       "reports-sales-by-customer:view",
       "reports-sales-customer-item:view",
+      "reports-sales-customer-outstanding:view",
       "reports-sales-rep-wise:view",
       "reports-sales-free-issue:view",
       "reports-procurement-purchasing:view",
@@ -528,6 +529,12 @@ const navigation: NavigationItem[] = [
         permissions: ["reports-sales-item-wise:view"],
       },
       {
+        name: "Customer Outstanding",
+        href: "/reports/customer-outstanding",
+        icon: DollarSign,
+        permissions: ["reports-sales-customer-outstanding:view"],
+      },
+      {
         name: "Rep Wise Sales",
         href: "/reports/rep-wise-sales",
         icon: Users,
@@ -545,6 +552,7 @@ const navigation: NavigationItem[] = [
         icon: Gift,
         permissions: ["reports-sales-free-issue:view", "reports-sales-item-wise:view"],
       },
+
       {
         name: "Procurement & Purchasing",
         isHeader: true,

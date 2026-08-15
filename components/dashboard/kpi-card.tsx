@@ -28,43 +28,45 @@ export function KpiCard({
   const isUp = trend >= 0
 
   return (
-    <Card className="hover:shadow-md transition-all duration-300 border-slate-200/60 overflow-hidden group">
+    <Card className="border border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-sm transition-all duration-200 overflow-hidden group">
       <CardContent className="p-3 relative">
-        <div
-          className={`absolute right-3 top-3 p-1.5 ${accentBg} rounded-lg group-hover:scale-110 transition-transform duration-300`}
-        >
-          <span className={accentColor}>{icon}</span>
+        <div className="flex items-start justify-between gap-2 mb-1.5">
+          <span className="text-[11px] font-medium text-slate-500 tracking-tight line-clamp-1 leading-snug">
+            {label}
+          </span>
+          <div
+            className={`flex-shrink-0 w-6 h-6 rounded-md ${accentBg} flex items-center justify-center group-hover:scale-105 transition-transform duration-200`}
+          >
+            <span className={`${accentColor} [&>svg]:w-3.5 [&>svg]:h-3.5`}>{icon}</span>
+          </div>
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider pr-8 leading-tight">
-            {label}
-          </h3>
-
-          <div className="text-lg font-bold text-slate-900 leading-none">
+          <div className="text-base font-bold text-slate-900 tracking-tight leading-tight">
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-slate-400 my-0.5" />
             ) : (
               value
             )}
           </div>
 
-          <div className="flex items-center gap-1 text-[10px]">
+          <div className="flex items-center gap-1.5 text-[10px]">
             {isUp ? (
-              <span className="text-emerald-600 font-medium flex items-center">
+              <span className="inline-flex items-center font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100/60">
                 <ArrowUpRight className="h-3 w-3 mr-0.5" />
                 +{trend}%
               </span>
             ) : (
-              <span className="text-red-600 font-medium flex items-center">
+              <span className="inline-flex items-center font-semibold text-red-700 bg-red-50 px-1 py-0.2 rounded border border-red-100/60">
                 <ArrowDownRight className="h-3 w-3 mr-0.5" />
                 {trend}%
               </span>
             )}
-            <span className="text-slate-400">{trendLabel}</span>
+            <span className="text-slate-400 truncate">{trendLabel}</span>
           </div>
         </div>
       </CardContent>
     </Card>
   )
 }
+

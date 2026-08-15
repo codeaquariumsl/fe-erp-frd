@@ -960,3 +960,88 @@ export const generateFreeIssueExcel = (
     XLSX.utils.book_append_sheet(wb, ws, 'Free Issue Report');
     XLSX.writeFile(wb, `Free_Issue_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`);
 };
+
+export const generateCustomerOutstandingReportExcel = (data: {
+    summary: {
+        totalCustomers: number;
+        totalInvoiced: number;
+        totalPaid: number;
+        totalOutstanding: number;
+        totalOverdue: number;
+    };
+    data: Array<{
+        customerCode: string;
+        customerName: string;
+        contactNumber: string;
+        salesPerson: string;
+        totalInvoiced: number;
+        totalPaid: number;
+        adjustments: number;
+        outstanding: number;
+        overdue: number;
+        lastPaymentDate?: string;
+        status: string;
+    }>;
+}) => {
+    const wb = XLSX.utils.book_new();
+
+    const wsData: any[][] = [
+        ['CUSTOMER OUTSTANDING REPORT'],
+        ['Generated At:', format(new Date(), 'yyyy-MM-dd HH:mm:ss')],
+        [],
+        ['SUMMARY TOTALS'],
+        ['Total Customers', data.summary?.totalCustomers || 0],
+        ['Total Invoiced', data.summary?.totalInvoiced || 0],
+        ['Total Paid', data.summary?.totalPaid || 0],
+        ['Total Outstanding', data.summary?.totalOutstanding || 0],
+        ['Total Overdue', data.summary?.totalOverdue || 0],
+        [],
+        ['Customer Code', 'Customer Name', 'Contact', 'Sales Person', 'Total Invoiced', 'Total Paid', 'Adjustments', 'Outstanding', 'Overdue', 'Last Payment', 'Status']
+    ];
+
+    (data.data || []).forEach(row => {
+        wsData.push([
+            row.customerCode || '-',
+            row.customerName || '-',
+            row.contactNumber || '-',
+            row.salesPerson || '-',
+            row.totalInvoiced || 0,
+            row.totalPaid || 0,
+            row.adjustments || 0,
+            row.outstanding || 0,
+            row.overdue || 0,
+            row.lastPaymentDate || '-',
+            row.status || '-'
+        ]);
+    });
+
+    wsData.push([]);
+    wsData.push([
+        'Grand Total', '', '', '',
+        data.summary?.totalInvoiced || 0,
+        data.summary?.totalPaid || 0,
+        '',
+        data.summary?.totalOutstanding || 0,
+        data.summary?.totalOverdue || 0,
+        '', ''
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [
+        { wch: 15 },
+        { wch: 30 },
+        { wch: 16 },
+        { wch: 22 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 15 },
+        { wch: 14 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Customer Outstanding');
+    XLSX.writeFile(wb, `Customer_Outstanding_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+};
+

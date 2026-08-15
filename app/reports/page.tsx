@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -32,10 +32,12 @@ const reportSections = [
             { name: "General Sales", href: "/reports/general-sales", icon: TrendingUp, description: "Outstanding & Overdue", color: "text-cyan-600", bg: "bg-cyan-50" },
             { name: "Item Wise Sales", href: "/reports/item-wise-sales", icon: TrendingUp, description: "Top selling items", color: "text-emerald-600", bg: "bg-emerald-50" },
             { name: "Item Detail Report", href: "/reports/sales-by-item", icon: Package, description: "Qty sold per item", color: "text-orange-600", bg: "bg-orange-50" },
+            { name: "Customer Outstanding", href: "/reports/customer-outstanding", icon: DollarSign, description: "Customer balances & aging", color: "text-orange-600", bg: "bg-orange-50" },
             { name: "Rep Wise Sales", href: "/reports/rep-wise-sales", icon: Users, description: "Sales by Rep", color: "text-teal-600", bg: "bg-teal-50" },
             { name: "Rep Wise Orders", href: "/reports/rep-wise-orders", icon: Users, description: "Orders by Rep", color: "text-amber-600", bg: "bg-amber-50" },
         ]
     },
+
     {
         title: "Procurement & Purchasing",
         items: [

@@ -3629,7 +3629,38 @@ export const reportsApi = {
   },
 
   // Sales Reports
+  async getCustomerOutstanding(paramsObj?: {
+    customerId?: number | string;
+    customerType?: string;
+    salesPersonId?: number | string;
+    locationId?: number | string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<any> {
+    const params = new URLSearchParams();
+    if (paramsObj?.customerId) params.append('customerId', paramsObj.customerId.toString());
+    if (paramsObj?.customerType) params.append('customerType', paramsObj.customerType);
+    if (paramsObj?.salesPersonId) params.append('salesPersonId', paramsObj.salesPersonId.toString());
+    if (paramsObj?.locationId) params.append('locationId', paramsObj.locationId.toString());
+    if (paramsObj?.startDate) params.append('startDate', paramsObj.startDate);
+    if (paramsObj?.endDate) params.append('endDate', paramsObj.endDate);
+    if (paramsObj?.status) params.append('status', paramsObj.status);
+    if (paramsObj?.page) params.append('page', paramsObj.page.toString());
+    if (paramsObj?.limit) params.append('limit', paramsObj.limit.toString());
+    if (paramsObj?.sortBy) params.append('sortBy', paramsObj.sortBy);
+    if (paramsObj?.sortOrder) params.append('sortOrder', paramsObj.sortOrder);
+
+    const url = `/reports/customer-outstanding${params.toString() ? `?${params.toString()}` : ''}`;
+    return apiRequest<any>(url);
+  },
+
   async getSalesSummary(startDate?: string, endDate?: string, status?: string): Promise<any> {
+
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);

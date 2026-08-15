@@ -107,7 +107,9 @@ const ALL_ROUTES = [
   { href: "/reports/general-sales", permissions: ["reports-sales-general:view"] },
   { href: "/reports/item-wise-sales", permissions: ["reports-sales-item-wise:view"] },
   { href: "/reports/sales-by-item", permissions: ["reports-sales-item-wise:view"] },
+  { href: "/reports/customer-outstanding", permissions: ["reports-sales-customer-outstanding:view"] },
   { href: "/reports/rep-wise-sales", permissions: ["reports-sales-rep-wise:view"] },
+
   { href: "/reports/rep-wise-orders", permissions: ["reports-sales-rep-wise:view"] },
   { href: "/reports/free-issue", permissions: ["reports-sales-free-issue:view", "reports-sales-item-wise:view"] },
   { href: "/reports/grn", permissions: ["reports-purchasing-grn-reports:view"] },
@@ -347,8 +349,9 @@ export default function Dashboard() {
         position: 'top' as const,
         labels: {
           usePointStyle: true,
-          padding: 15,
-          font: { size: 11, family: 'Inter' }
+          boxWidth: 8,
+          padding: 10,
+          font: { size: 10, family: 'Inter' }
         }
       },
     },
@@ -357,6 +360,7 @@ export default function Dashboard() {
         beginAtZero: true,
         grid: { color: 'rgba(0, 0, 0, 0.04)' },
         ticks: {
+          font: { size: 10 },
           callback: function (value: any) {
             if (value >= 1e6) return (value / 1e6).toFixed(1) + 'M'
             if (value >= 1e3) return (value / 1e3).toFixed(0) + 'K'
@@ -365,7 +369,8 @@ export default function Dashboard() {
         }
       },
       x: {
-        grid: { display: false }
+        grid: { display: false },
+        ticks: { font: { size: 10 } }
       }
     }
   }
@@ -396,13 +401,13 @@ export default function Dashboard() {
       legend: {
         position: 'right' as const,
         labels: {
-          boxWidth: 12,
+          boxWidth: 10,
           usePointStyle: true,
-          font: { size: 11 }
+          font: { size: 10 }
         }
       }
     },
-    cutout: '70%',
+    cutout: '72%',
   }
 
   // 5. Top Customers list
@@ -423,13 +428,13 @@ export default function Dashboard() {
     return (
       <ERPLayout>
         <div className="min-h-[80vh] flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-4 shadow-sm">
-            <div className="w-16 h-16 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-center mx-auto text-amber-600">
-              <LockKeyhole className="w-8 h-8" />
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-6 text-center space-y-3 shadow-sm">
+            <div className="w-12 h-12 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-center mx-auto text-amber-600">
+              <LockKeyhole className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-xl font-bold text-slate-800">No Authorizations Assigned</h2>
-              <p className="text-sm text-slate-500">Your account does not have permissions assigned for any workspace modules. Please contact your system administrator.</p>
+              <h2 className="text-lg font-bold text-slate-800">No Authorizations Assigned</h2>
+              <p className="text-xs text-slate-500">Your account does not have permissions assigned for any workspace modules. Please contact your system administrator.</p>
             </div>
           </div>
         </div>
@@ -439,110 +444,141 @@ export default function Dashboard() {
 
   return (
     <ERPLayout>
-      <div className="space-y-6 p-6 bg-slate-50/50 min-h-screen">
+      <div className="space-y-3.5 p-3.5 md:p-4 bg-slate-50/70 min-h-screen">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl shadow-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3.5 py-2.5 rounded-xl shadow-2xs text-xs">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
               {error}
             </div>
           </div>
         )}
 
-        {/* --- HEADER --- */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* --- DASHBOARD HEADER & ACTIONS --- */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 px-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                Operations Hub <Leaf className="h-6 w-6 text-emerald-600 fill-emerald-600/10" />
+              <h1 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                Operations Hub <Leaf className="h-4 w-4 text-emerald-600 fill-emerald-600/10" />
               </h1>
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200/80 text-[10px] px-1.5 py-0 font-medium">
+                Live Status
+              </Badge>
             </div>
-            <p className="text-slate-500 mt-1 text-sm">Welcome back to Fruit Eazy ERP — real-time sales and collections metrics</p>
+            <p className="text-slate-500 text-xs mt-0.5">Fruit Eazy ERP — Real-time business metrics, sales analytics & inventory controls</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={loadDashboardData} disabled={loading} className="shadow-sm border-slate-200 hover:bg-slate-100 rounded-xl">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Activity className="h-4 w-4 mr-2 text-emerald-600" />}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={loadDashboardData} disabled={loading} className="h-8 text-xs px-3 shadow-2xs border-slate-200/80 hover:bg-slate-50 rounded-lg">
+              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5 text-emerald-600" /> : <Activity className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />}
               Refresh
             </Button>
-            <Button onClick={() => router.push('/reports')} className="shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">
-              <BarChart3 className="h-4 w-4 mr-2" />
+            <Button size="sm" onClick={() => router.push('/reports')} className="h-8 text-xs px-3 shadow-2xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+              <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
               Detailed Reports
             </Button>
           </div>
         </div>
 
-        {/* --- KPI SECTION: INVOICED SALES --- */}
+        {/* --- QUICK OPERATIONS TOOLBAR --- */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Button
+            variant="outline"
+            className="h-8 justify-start gap-2 bg-white hover:bg-emerald-50/50 border-slate-200/80 hover:border-emerald-200 text-slate-700 rounded-lg shadow-2xs text-xs font-semibold px-3 transition-colors"
+            onClick={() => router.push('/sales')}
+          >
+            <ShoppingCart className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+            <span className="truncate">New Sales Order</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 justify-start gap-2 bg-white hover:bg-emerald-50/50 border-slate-200/80 hover:border-emerald-200 text-slate-700 rounded-lg shadow-2xs text-xs font-semibold px-3 transition-colors"
+            onClick={() => router.push('/grn')}
+          >
+            <Package className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+            <span className="truncate">Receive Goods (GRN)</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 justify-start gap-2 bg-white hover:bg-amber-50/50 border-slate-200/80 hover:border-amber-200 text-slate-700 rounded-lg shadow-2xs text-xs font-semibold px-3 transition-colors"
+            onClick={() => router.push('/delivery-orders')}
+          >
+            <Truck className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+            <span className="truncate">Delivery Orders</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 justify-start gap-2 bg-white hover:bg-blue-50/50 border-slate-200/80 hover:border-blue-200 text-slate-700 rounded-lg shadow-2xs text-xs font-semibold px-3 transition-colors"
+            onClick={() => router.push('/customers')}
+          >
+            <Users className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+            <span className="truncate">Customers CRM</span>
+          </Button>
+        </div>
+
+        {/* --- CONSOLIDATED 6-COLUMN KPI SECTION --- */}
         <KpiSection
-          title="Invoiced Sales Performance"
-          badgeLabel="Invoices"
+          title="Key Performance Summary"
+          badgeLabel="Real-time Financials"
           accentDot="bg-emerald-600"
-          badgeCls="bg-emerald-50 text-emerald-700 border-emerald-200"
+          badgeCls="bg-slate-100 text-slate-700 border-slate-200"
+          gridClassName="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
         >
           <KpiCard
-            label="Weekly Invoiced Sales"
+            label="Weekly Sales"
             value={formatCurrency(weeklySales)}
             trend={weeklySalesTrend}
             trendLabel="vs last week"
-            icon={<DollarSign className="h-5 w-5" />}
+            icon={<DollarSign />}
             accentBg="bg-emerald-50"
             accentColor="text-emerald-600"
             loading={loading}
           />
           <KpiCard
-            label="Monthly Invoiced Sales"
+            label="Monthly Sales"
             value={formatCurrency(monthlySales)}
             trend={monthlySalesTrend}
             trendLabel="vs last month"
-            icon={<TrendingUp className="h-5 w-5" />}
+            icon={<TrendingUp />}
             accentBg="bg-emerald-50"
             accentColor="text-emerald-600"
             loading={loading}
           />
           <KpiCard
-            label="Annual Invoiced Sales (Rolling)"
+            label="Annual Sales"
             value={formatCurrency(annualSales)}
             trend={annualSalesTrend}
             trendLabel="vs last year"
-            icon={<Sparkles className="h-5 w-5" />}
+            icon={<Sparkles />}
             accentBg="bg-emerald-50"
             accentColor="text-emerald-600"
             loading={loading}
           />
-        </KpiSection>
-
-        {/* --- KPI SECTION: COLLECTIONS --- */}
-        <KpiSection
-          title="Collections & Cashflow"
-          badgeLabel="Receipts"
-          accentDot="bg-amber-500"
-          badgeCls="bg-amber-50 text-amber-700 border-amber-200"
-        >
           <KpiCard
-            label="Weekly Collected Receipts"
+            label="Weekly Collections"
             value={formatCurrency(weeklyCollections)}
             trend={weeklyCollectionsTrend}
             trendLabel="vs last week"
-            icon={<DollarSign className="h-5 w-5" />}
+            icon={<DollarSign />}
             accentBg="bg-amber-50"
             accentColor="text-amber-600"
             loading={loading}
           />
           <KpiCard
-            label="Monthly Collected Receipts"
+            label="Monthly Collections"
             value={formatCurrency(monthlyCollections)}
             trend={monthlyCollectionsTrend}
             trendLabel="vs last month"
-            icon={<TrendingUp className="h-5 w-5" />}
+            icon={<TrendingUp />}
             accentBg="bg-amber-50"
             accentColor="text-amber-600"
             loading={loading}
           />
           <KpiCard
-            label="Annual Collected Receipts (Rolling)"
+            label="Annual Collections"
             value={formatCurrency(annualCollections)}
             trend={annualCollectionsTrend}
             trendLabel="vs last year"
-            icon={<Sparkles className="h-5 w-5" />}
+            icon={<Sparkles />}
             accentBg="bg-amber-50"
             accentColor="text-amber-600"
             loading={loading}
@@ -550,23 +586,23 @@ export default function Dashboard() {
         </KpiSection>
 
         {/* --- CHARTS SECTION --- */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-3.5 lg:grid-cols-3">
           {/* Sales vs Collections Comparison Chart */}
-          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <Card className="lg:col-span-2 shadow-2xs border-slate-200/80 bg-white">
+            <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-slate-800">Sales vs Collections Comparison</CardTitle>
-                <CardDescription className="text-xs">Invoice totals compared to received payments over the last 6 months</CardDescription>
+                <CardTitle className="text-xs font-bold text-slate-800">Sales vs Collections Comparison</CardTitle>
+                <CardDescription className="text-[10px] text-slate-400">Invoiced totals vs received payments (last 6 months)</CardDescription>
               </div>
-              <BarChart3 className="h-4 w-4 text-emerald-600" />
+              <BarChart3 className="h-3.5 w-3.5 text-emerald-600" />
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="p-3 pt-2">
               {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                <div className="flex items-center justify-center h-48">
+                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
                 </div>
               ) : (
-                <div className="h-64">
+                <div className="h-48">
                   <Bar data={chartData} options={chartOptions} />
                 </div>
               )}
@@ -574,21 +610,21 @@ export default function Dashboard() {
           </Card>
 
           {/* Delivery Order Status */}
-          <Card className="shadow-sm border-slate-200/60">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <Card className="shadow-2xs border-slate-200/80 bg-white">
+            <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-slate-800">Delivery Distribution</CardTitle>
-                <CardDescription className="text-xs">Current state of delivery orders</CardDescription>
+                <CardTitle className="text-xs font-bold text-slate-800">Delivery Distribution</CardTitle>
+                <CardDescription className="text-[10px] text-slate-400">Current status of logistics orders</CardDescription>
               </div>
-              <PieChart className="h-4 w-4 text-emerald-600" />
+              <PieChart className="h-3.5 w-3.5 text-emerald-600" />
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="p-3 pt-2">
               {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                <div className="flex items-center justify-center h-48">
+                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
                 </div>
               ) : (
-                <div className="h-64 relative">
+                <div className="h-48 relative">
                   <Doughnut data={orderStatusData} options={doughnutOptions} />
                 </div>
               )}
@@ -596,24 +632,27 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* --- GRID INSIGHTS (FAST MOVING & TOP CUSTOMERS) --- */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        {/* --- OPERATIONAL INSIGHTS (FAST MOVING & TOP CUSTOMERS) --- */}
+        <div className="grid gap-3.5 lg:grid-cols-2">
           {/* Fast Moving Items */}
-          <Card className="shadow-sm border-slate-200/60">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <Package className="h-4 w-4 text-emerald-600" />
-                Fast Moving Items
-              </CardTitle>
-              <CardDescription className="text-xs">Top products ranked by quantity sold</CardDescription>
+          <Card className="shadow-2xs border-slate-200/80 bg-white">
+            <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Package className="h-3.5 w-3.5 text-emerald-600" />
+                  Fast Moving Products
+                </CardTitle>
+                <CardDescription className="text-[10px] text-slate-400">Top items ranked by sales quantity</CardDescription>
+              </div>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-50 text-slate-600">Top 5</Badge>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="p-3 pt-2">
               {loading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {topSellingItems.length > 0 ? (
                     topSellingItems.map((item, index) => {
                       const totalQty = parseInt(item.totalQuantitySold || 0)
@@ -621,27 +660,27 @@ export default function Dashboard() {
                       const progressPercentage = Math.min(100, (totalQty / maxQty) * 100)
 
                       return (
-                        <div key={index} className="space-y-1.5 p-3 hover:bg-slate-50 rounded-xl transition-all">
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold text-xs rounded-full">
+                        <div key={index} className="p-2 hover:bg-slate-50 rounded-lg border border-slate-100 transition-all space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-4 h-4 flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold text-[10px] rounded-full flex-shrink-0">
                                 {index + 1}
                               </span>
-                              <span className="font-semibold text-slate-700 truncate max-w-[200px]">
+                              <span className="font-semibold text-slate-800 truncate max-w-[180px]">
                                 {item.Item?.name || `Product #${item.itemId}`}
                               </span>
-                              <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono">
+                              <span className="text-[9px] text-slate-400 bg-slate-100 px-1 py-0.2 rounded font-mono">
                                 {item.Item?.sku || 'SKU N/A'}
                               </span>
                             </div>
                             <div className="text-right">
                               <span className="font-bold text-slate-900">{totalQty.toLocaleString()}</span>
-                              <span className="text-[11px] text-slate-400 ml-1">sold</span>
+                              <span className="text-[10px] text-slate-400 ml-0.5">sold</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Progress value={progressPercentage} className="h-2 flex-1" />
-                            <span className="text-xs font-semibold text-slate-500 min-w-[65px] text-right">
+                          <div className="flex items-center gap-2">
+                            <Progress value={progressPercentage} className="h-1.5 flex-1" />
+                            <span className="text-[11px] font-semibold text-slate-600 min-w-[60px] text-right">
                               {formatCurrency(item.totalRevenue)}
                             </span>
                           </div>
@@ -649,9 +688,9 @@ export default function Dashboard() {
                       )
                     })
                   ) : (
-                    <div className="text-center text-slate-500 py-12">
-                      <Package className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                      <p className="text-sm">No transaction details available to determine top products</p>
+                    <div className="text-center text-slate-400 py-8">
+                      <Package className="h-6 w-6 text-slate-300 mx-auto mb-1" />
+                      <p className="text-xs">No transaction history available</p>
                     </div>
                   )}
                 </div>
@@ -660,21 +699,24 @@ export default function Dashboard() {
           </Card>
 
           {/* Top Customers */}
-          <Card className="shadow-sm border-slate-200/60">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <Users className="h-4 w-4 text-emerald-600" />
-                Top Customers
-              </CardTitle>
-              <CardDescription className="text-xs">Highest-value buyers based on invoice history</CardDescription>
+          <Card className="shadow-2xs border-slate-200/80 bg-white">
+            <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-emerald-600" />
+                  Top Account Customers
+                </CardTitle>
+                <CardDescription className="text-[10px] text-slate-400">Highest-value buyers by invoice total</CardDescription>
+              </div>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-50 text-slate-600">Top 5</Badge>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="p-3 pt-2">
               {loading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {topCustomers.length > 0 ? (
                     topCustomers.map((cust, index) => {
                       const initials = cust.name
@@ -685,29 +727,29 @@ export default function Dashboard() {
                         .toUpperCase()
 
                       return (
-                        <div key={index} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-all">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-emerald-600 text-white font-semibold text-xs">
+                        <div key={index} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg border border-slate-100 transition-all">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="h-7 w-7 border border-slate-200">
+                              <AvatarFallback className="bg-emerald-600 text-white font-bold text-[10px]">
                                 {initials || "C"}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-semibold text-sm text-slate-800">{cust.name}</p>
-                              <p className="text-xs text-slate-400">{cust.count} orders</p>
+                              <p className="font-semibold text-xs text-slate-800 line-clamp-1">{cust.name}</p>
+                              <p className="text-[10px] text-slate-400">{cust.count} orders logged</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-sm text-slate-900">{formatCurrency(cust.totalValue)}</p>
-                            <Badge className="text-[9px] px-1 py-0 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-emerald-100">Top Buyer</Badge>
+                            <p className="font-bold text-xs text-slate-900">{formatCurrency(cust.totalValue)}</p>
+                            <Badge className="text-[9px] px-1 py-0 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-emerald-100 font-medium">Top Buyer</Badge>
                           </div>
                         </div>
                       )
                     })
                   ) : (
-                    <div className="text-center text-slate-500 py-12">
-                      <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                      <p className="text-sm">No sales invoices logged to calculate customer value</p>
+                    <div className="text-center text-slate-400 py-8">
+                      <Users className="h-6 w-6 text-slate-300 mx-auto mb-1" />
+                      <p className="text-xs">No sales invoices logged to aggregate customers</p>
                     </div>
                   )}
                 </div>
@@ -717,47 +759,47 @@ export default function Dashboard() {
         </div>
 
         {/* --- RECENT INVOICES & LOW STOCK ALERTS --- */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-3.5 lg:grid-cols-2">
           {/* Recent Invoices */}
-          <Card className="shadow-sm border-slate-200/60">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <Card className="shadow-2xs border-slate-200/80 bg-white">
+            <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-slate-800">Recent Invoiced Orders</CardTitle>
-                <CardDescription className="text-xs">Latest issued business invoices</CardDescription>
+                <CardTitle className="text-xs font-bold text-slate-800">Recent Issued Invoices</CardTitle>
+                <CardDescription className="text-[10px] text-slate-400">Latest active sales billing entries</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => router.push('/invoices')} className="text-xs text-emerald-600 hover:text-emerald-700">
-                View Invoices
+              <Button variant="ghost" size="sm" onClick={() => router.push('/invoices')} className="h-6 text-[11px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/50">
+                View All Invoices
               </Button>
             </CardHeader>
-            <CardContent className="pt-2">
+            <CardContent className="p-3 pt-2">
               {loading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {(mainDetails?.recentOrders || []).length > 0 ? (
-                    (mainDetails?.recentOrders || []).map((order: any) => (
-                      <div key={order.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl hover:shadow-sm transition-all">
-                        <div className="flex-1">
+                    (mainDetails?.recentOrders || []).slice(0, 5).map((order: any) => (
+                      <div key={order.id} className="flex items-center justify-between p-2 bg-white border border-slate-100 rounded-lg hover:bg-slate-50 transition-all">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                            <div>
-                              <p className="font-semibold text-sm text-slate-800">#{order.invoiceNumber || order.id}</p>
-                              <p className="text-xs text-slate-400">{order.Customer?.name || 'Unknown Customer'}</p>
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full flex-shrink-0"></div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-xs text-slate-800 truncate">#{order.invoiceNumber || order.id}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{order.Customer?.name || 'Unknown Customer'}</p>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-sm text-slate-900">{formatCurrency(order.total || 0)}</p>
-                          <div className="mt-1">{getOrderStatusBadge(order.status)}</div>
+                        <div className="text-right flex-shrink-0 ml-2">
+                          <p className="font-bold text-xs text-slate-900">{formatCurrency(order.total || 0)}</p>
+                          <div className="mt-0.5">{getOrderStatusBadge(order.status)}</div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center text-slate-500 py-12">
-                      <ShoppingCart className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                      <p className="text-sm">No recent invoices found</p>
+                    <div className="text-center text-slate-400 py-8">
+                      <ShoppingCart className="h-6 w-6 text-slate-300 mx-auto mb-1" />
+                      <p className="text-xs">No recent invoices logged</p>
                     </div>
                   )}
                 </div>
@@ -766,52 +808,52 @@ export default function Dashboard() {
           </Card>
 
           {/* Low Stock Alerts */}
-          <Card className="shadow-sm border-slate-200/60">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <Card className="shadow-2xs border-slate-200/80 bg-white">
+            <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-slate-800">Low Stock Alerts</CardTitle>
-                <CardDescription className="text-xs">Warehouse items falling below safety reorder limits</CardDescription>
+                <CardTitle className="text-xs font-bold text-slate-800">Low Stock Reorder Alerts</CardTitle>
+                <CardDescription className="text-[10px] text-slate-400">Inventory items reaching safety thresholds</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => router.push('/inventory')} className="text-xs text-emerald-600 hover:text-emerald-700">
-                Manage Stock
+              <Button variant="ghost" size="sm" onClick={() => router.push('/inventory')} className="h-6 text-[11px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/50">
+                Inventory Control
               </Button>
             </CardHeader>
-            <CardContent className="pt-2">
+            <CardContent className="p-3 pt-2">
               {loading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {(mainDetails?.lowStockItems || []).length > 0 ? (
-                    (mainDetails?.lowStockItems || []).map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-red-50/50 rounded-xl border border-red-100/40">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-red-50 rounded-lg">
-                            <Package className="h-4 w-4 text-red-600" />
+                    (mainDetails?.lowStockItems || []).slice(0, 5).map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-red-50/40 rounded-lg border border-red-100/50">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="p-1.5 bg-red-100/60 rounded-md flex-shrink-0">
+                            <Package className="h-3.5 w-3.5 text-red-600" />
                           </div>
-                          <div>
-                            <p className="font-semibold text-sm text-slate-800">{item.name}</p>
-                            <p className="text-xs text-slate-400">{item.sku || 'SKU N/A'}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-xs text-slate-800 truncate">{item.name}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{item.sku || 'SKU N/A'}</p>
                           </div>
                         </div>
-                        <div className="text-right space-y-1">
-                          <div className="flex items-center justify-end gap-2 text-sm">
+                        <div className="text-right space-y-0.5 flex-shrink-0 ml-2">
+                          <div className="flex items-center justify-end gap-1 text-xs">
                             <span className="text-red-600 font-bold">{item.availableQty || 0}</span>
-                            <span className="text-slate-400">/</span>
-                            <span className="text-slate-500 font-medium">{item.reorderLevelQty || 0}</span>
+                            <span className="text-slate-300">/</span>
+                            <span className="text-slate-500 font-medium text-[11px]">{item.reorderLevelQty || 0}</span>
                           </div>
                           <Progress
                             value={Math.min(100, ((item.availableQty || 0) / Math.max(item.reorderLevelQty || 1, 1)) * 100)}
-                            className="w-16 h-1.5"
+                            className="w-14 h-1"
                           />
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center text-slate-500 py-12">
-                      <Package className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                      <p className="text-sm">All inventory items are above reorder limits</p>
+                    <div className="text-center text-slate-400 py-8">
+                      <Package className="h-6 w-6 text-slate-300 mx-auto mb-1" />
+                      <p className="text-xs">All inventory items are within healthy limits</p>
                     </div>
                   )}
                 </div>
@@ -819,50 +861,8 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-
-        {/* --- QUICK ACTIONS --- */}
-        {/* <Card className="shadow-sm border-slate-200/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-bold text-slate-800">Operations Panel</CardTitle>
-            <CardDescription className="text-xs">Quick entry points for primary ERP operations</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Button
-                className="h-16 flex-col gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md shadow-emerald-600/10"
-                onClick={() => router.push('/sales')}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span className="font-semibold text-sm">Create Sales Order</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-16 flex-col gap-1.5 bg-white hover:bg-slate-50 border-slate-200 text-slate-700 rounded-xl shadow-sm"
-                onClick={() => router.push('/grn')}
-              >
-                <Package className="h-5 w-5 text-emerald-600" />
-                <span className="font-semibold text-sm">Receive Goods (GRN)</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-16 flex-col gap-1.5 bg-white hover:bg-slate-50 border-slate-200 text-slate-700 rounded-xl shadow-sm"
-                onClick={() => router.push('/delivery-orders')}
-              >
-                <Truck className="h-5 w-5 text-amber-500" />
-                <span className="font-semibold text-sm">Logistics / Delivery</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-16 flex-col gap-1.5 bg-white hover:bg-slate-50 border-slate-200 text-slate-700 rounded-xl shadow-sm"
-                onClick={() => router.push('/customers')}
-              >
-                <Users className="h-5 w-5 text-blue-500" />
-                <span className="font-semibold text-sm">Customers CRM</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card> */}
       </div>
     </ERPLayout>
   )
 }
+
