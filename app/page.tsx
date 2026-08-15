@@ -467,7 +467,8 @@ export default function Dashboard() {
           <KpiCard
             label="Total Orders"
             value={(mainDetails?.summary?.totalOrders?.value || 0).toString()}
-            subtext={`${mainDetails?.summary?.totalOrders?.pending || 0} Pending`}
+            trend={0}
+            trendLabel={`${mainDetails?.summary?.totalOrders?.pending || 0} Pending`}
             icon={<ShoppingCart />}
             accentBg="bg-blue-50"
             accentColor="text-blue-600"
@@ -476,7 +477,8 @@ export default function Dashboard() {
           <KpiCard
             label="Active Customers"
             value={(mainDetails?.summary?.activeCustomers?.value || 0).toString()}
-            subtext="Registered & Active"
+            trend={0}
+            trendLabel="Registered & Active"
             icon={<Users />}
             accentBg="bg-purple-50"
             accentColor="text-purple-600"
@@ -485,7 +487,8 @@ export default function Dashboard() {
           <KpiCard
             label="Inventory Value"
             value={formatCurrency(mainDetails?.summary?.totalInventoryValue?.value || 0)}
-            subtext="Available Stock"
+            trend={0}
+            trendLabel="Available Stock"
             icon={<Package />}
             accentBg="bg-indigo-50"
             accentColor="text-indigo-600"
@@ -494,7 +497,8 @@ export default function Dashboard() {
           <KpiCard
             label="Low Stock Items"
             value={(mainDetails?.summary?.lowStockItems?.value || 0).toString()}
-            subtext={mainDetails?.summary?.lowStockItems?.status || "Healthy"}
+            trend={0}
+            trendLabel={mainDetails?.summary?.lowStockItems?.status || "Healthy"}
             icon={<AlertTriangle />}
             accentBg="bg-red-50"
             accentColor="text-red-600"
