@@ -92,10 +92,10 @@ export function Header() {
     const pathSegments = pathname.split('/').filter(Boolean)
     const items = []
 
-    // Always start with home
+    // Always start with Dashboard
     items.push({
       href: '/',
-      label: 'Home',
+      label: 'Dashboard',
       isActive: pathname === '/'
     })
 

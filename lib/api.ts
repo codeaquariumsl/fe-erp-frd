@@ -188,17 +188,24 @@ export interface DashboardMainDetails {
   summary: {
     totalInventoryValue: { value: number; trend: number }
     monthlySales: { value: number; trend: number }
+    monthlyCollections?: { value: number; trend: number }
     activeCustomers: { value: number; trend: number }
     totalOrders: { value: number; pending: number }
     lowStockItems: { value: number; status: string }
     profitMargin?: { value: number; trend: number }
   }
-  salesTrend: Array<{ month: string; sales: number }>
+  salesVsCollections?: {
+    labels: string[]
+    sales: number[]
+    collections: number[]
+  }
   deliveryOrderStatus: Array<{ status: string; count: number }>
+  salesOrderStatus?: Array<{ status: string; count: number }>
   topInventoryItems: any[]
   recentOrders: any[]
   lowStockItems: any[]
 }
+
 
 export interface User {
   id: number
@@ -3430,10 +3437,14 @@ export interface ExpensesReport {
 }
 
 export const dashboardApi = {
-  getMainDetails: async (): Promise<DashboardMainDetails> => {
-    return apiRequest<DashboardMainDetails>("/dashboard/main-details")
+  getMainDetails: async (period?: string): Promise<DashboardMainDetails> => {
+    const params = new URLSearchParams()
+    if (period) params.append('period', period)
+    const url = `/dashboard/main-details${params.toString() ? `?${params.toString()}` : ''}`
+    return apiRequest<DashboardMainDetails>(url)
   }
 }
+
 
 export const reportsApi = {
   // Stock Reports

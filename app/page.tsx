@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { format } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -26,16 +28,13 @@ import {
   TrendingDown,
   CheckCircle2,
   Clock,
-  Sparkles
+  Sparkles,
+  CalendarIcon
 } from "lucide-react"
 import {
   dashboardApi,
-  invoicesApi,
-  receiptsApi,
   reportsApi,
-  DashboardMainDetails,
-  Invoice,
-  Receipt
+  DashboardMainDetails
 } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { LockKeyhole, ShieldAlert } from "lucide-react"
@@ -55,7 +54,7 @@ import {
   LineElement,
   Filler,
 } from 'chart.js'
-import { Bar, Doughnut } from 'react-chartjs-2'
+import { Bar, Doughnut, Pie } from 'react-chartjs-2'
 
 ChartJS.register(
   CategoryScale,
@@ -127,10 +126,9 @@ const ALL_ROUTES = [
 export default function Dashboard() {
   const router = useRouter()
   const { hasPermission, user, isLoading: authLoading } = useAuth()
+  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("monthly")
   const [loading, setLoading] = useState(true)
   const [mainDetails, setMainDetails] = useState<DashboardMainDetails | null>(null)
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [receipts, setReceipts] = useState<Receipt[]>([])
   const [topSellingItems, setTopSellingItems] = useState<any[]>([])
   const [salesSummary, setSalesSummary] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
@@ -148,44 +146,42 @@ export default function Dashboard() {
         setLoading(false)
       }
     } else {
-      loadDashboardData()
+      loadDashboardData(period)
     }
-  }, [authLoading, user, hasPermission])
+  }, [authLoading, user, hasPermission, period])
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (currentPeriod: string = period) => {
     setLoading(true)
     setError(null)
     try {
+      const now = new Date()
+      let startDateStr: string | undefined
+      let endDateStr: string = format(now, "yyyy-MM-dd")
+
+      if (currentPeriod === "daily") {
+        startDateStr = format(now, "yyyy-MM-dd")
+      } else if (currentPeriod === "weekly") {
+        const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        startDateStr = format(start, "yyyy-MM-dd")
+      } else {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1)
+        startDateStr = format(start, "yyyy-MM-dd")
+      }
+
       const [
         mainDataRes,
-        invoicesRes,
-        receiptsRes,
         topItemsRes,
         salesSummaryRes
       ] = await Promise.allSettled([
-        dashboardApi.getMainDetails(),
-        invoicesApi.getAll({ limit: 1000 }),
-        receiptsApi.getAll({ limit: 1000 }),
-        reportsApi.getTopSellingItems(undefined, undefined, 5),
-        reportsApi.getSalesSummary()
+        dashboardApi.getMainDetails(currentPeriod),
+        reportsApi.getTopSellingItems(startDateStr, endDateStr, 5),
+        reportsApi.getSalesSummary(startDateStr, endDateStr)
       ])
 
       if (mainDataRes.status === 'fulfilled') {
         setMainDetails(mainDataRes.value)
       } else {
         console.error("Failed to load main details:", mainDataRes.reason)
-      }
-
-      if (invoicesRes.status === 'fulfilled') {
-        setInvoices(invoicesRes.value.data || [])
-      } else {
-        console.error("Failed to load invoices:", invoicesRes.reason)
-      }
-
-      if (receiptsRes.status === 'fulfilled') {
-        setReceipts(receiptsRes.value || [])
-      } else {
-        console.error("Failed to load receipts:", receiptsRes.reason)
       }
 
       if (topItemsRes.status === 'fulfilled') {
@@ -228,118 +224,40 @@ export default function Dashboard() {
     }
   }
 
-  // Calculate Metrics from raw data
-  const now = new Date()
-  const oneDay = 24 * 60 * 60 * 1000
+  // Period-based Metrics calculation
+  const periodTitle = period === "daily" ? "Daily" : period === "weekly" ? "Weekly" : "Monthly"
+  const prevTrendLabel = period === "daily" ? "vs yesterday" : period === "weekly" ? "vs prev week" : "vs prev month"
 
-  // 1. Sales Calculations (Weekly, Monthly, Annual)
-  const getSalesForPeriod = (days: number) => {
-    return invoices
-      .filter(inv => {
-        if (!inv.invoiceDate || inv.status === 'Cancelled') return false
-        const invDate = new Date(inv.invoiceDate)
-        return (now.getTime() - invDate.getTime()) <= days * oneDay
-      })
-      .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0)
-  }
+  const salesForPeriod = mainDetails?.summary?.monthlySales?.value || 0
+  const salesTrendForPeriod = mainDetails?.summary?.monthlySales?.trend || 0
 
-  const weeklySales = getSalesForPeriod(7)
-  const monthlySales = getSalesForPeriod(30)
-  const annualSales = getSalesForPeriod(365)
+  const collectionsForPeriod = mainDetails?.summary?.monthlyCollections?.value || 0
+  const collectionsTrendForPeriod = mainDetails?.summary?.monthlyCollections?.trend || 0
 
-  // Determine trend percentage (weekly vs previous week, etc. or placeholder if not enough data)
-  const getSalesTrend = (days: number) => {
-    const current = getSalesForPeriod(days)
-    const previous = invoices
-      .filter(inv => {
-        if (!inv.invoiceDate || inv.status === 'Cancelled') return false
-        const invDate = new Date(inv.invoiceDate)
-        const diffDays = (now.getTime() - invDate.getTime()) / oneDay
-        return diffDays > days && diffDays <= days * 2
-      })
-      .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0)
-
-    if (previous === 0) return 0
-    return parseFloat(((current - previous) / previous * 100).toFixed(1))
-  }
-
-  const weeklySalesTrend = getSalesTrend(7)
-  const monthlySalesTrend = getSalesTrend(30)
-  const annualSalesTrend = getSalesTrend(365)
-
-  // 2. Collections Calculations (Weekly, Monthly, Annual)
-  const getCollectionsForPeriod = (days: number) => {
-    return receipts
-      .filter(rec => {
-        if (!rec.receiptDate || rec.isActive === false) return false
-        const recDate = new Date(rec.receiptDate)
-        return (now.getTime() - recDate.getTime()) <= days * oneDay
-      })
-      .reduce((sum, rec) => sum + (rec.totalPaid || 0), 0)
-  }
-
-  const weeklyCollections = getCollectionsForPeriod(7)
-  const monthlyCollections = getCollectionsForPeriod(30)
-  const annualCollections = getCollectionsForPeriod(365)
-
-  const getCollectionsTrend = (days: number) => {
-    const current = getCollectionsForPeriod(days)
-    const previous = receipts
-      .filter(rec => {
-        if (!rec.receiptDate || rec.isActive === false) return false
-        const recDate = new Date(rec.receiptDate)
-        const diffDays = (now.getTime() - recDate.getTime()) / oneDay
-        return diffDays > days && diffDays <= days * 2
-      })
-      .reduce((sum, rec) => sum + (rec.totalPaid || 0), 0)
-
-    if (previous === 0) return 0
-    return parseFloat(((current - previous) / previous * 100).toFixed(1))
-  }
-
-  const weeklyCollectionsTrend = getCollectionsTrend(7)
-  const monthlyCollectionsTrend = getCollectionsTrend(30)
-  const annualCollectionsTrend = getCollectionsTrend(365)
-
-  // 3. Sales vs Collections Chart Data (Last 6 Months)
-  const last6Months = Array.from({ length: 6 }).map((_, i) => {
-    const d = new Date()
-    d.setMonth(d.getMonth() - i)
+  // Dynamic Sales vs Collections Chart Data from mainDetails API endpoint
+  const chartData = useMemo(() => {
     return {
-      key: d.toISOString().slice(0, 7), // "YYYY-MM"
-      label: d.toLocaleString('default', { month: 'short', year: '2-digit' }),
+      labels: mainDetails?.salesVsCollections?.labels || [],
+      datasets: [
+        {
+          label: 'Invoiced Sales',
+          data: mainDetails?.salesVsCollections?.sales || [],
+          backgroundColor: 'rgba(16, 185, 129, 0.85)',
+          borderColor: 'rgb(16, 185, 129)',
+          borderWidth: 1,
+          borderRadius: 6,
+        },
+        {
+          label: 'Received Collections',
+          data: mainDetails?.salesVsCollections?.collections || [],
+          backgroundColor: 'rgba(245, 158, 11, 0.85)',
+          borderColor: 'rgb(245, 158, 11)',
+          borderWidth: 1,
+          borderRadius: 6,
+        }
+      ]
     }
-  }).reverse()
-
-  const chartData = {
-    labels: last6Months.map(m => m.label),
-    datasets: [
-      {
-        label: 'Invoiced Sales',
-        data: last6Months.map(m => {
-          return invoices
-            .filter(inv => inv.invoiceDate && inv.invoiceDate.slice(0, 7) === m.key && inv.status !== 'Cancelled')
-            .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0)
-        }),
-        backgroundColor: 'rgba(16, 185, 129, 0.85)', // Emerald
-        borderColor: 'rgb(16, 185, 129)',
-        borderWidth: 1,
-        borderRadius: 6,
-      },
-      {
-        label: 'Received Collections',
-        data: last6Months.map(m => {
-          return receipts
-            .filter(rec => rec.receiptDate && rec.receiptDate.slice(0, 7) === m.key && rec.isActive !== false)
-            .reduce((sum, rec) => sum + (rec.totalPaid || 0), 0)
-        }),
-        backgroundColor: 'rgba(245, 158, 11, 0.85)', // Amber
-        borderColor: 'rgb(245, 158, 11)',
-        borderWidth: 1,
-        borderRadius: 6,
-      }
-    ]
-  }
+  }, [mainDetails])
 
   const chartOptions = {
     responsive: true,
@@ -394,6 +312,27 @@ export default function Dashboard() {
     ],
   }
 
+  // 4b. Sales Order Status
+  const salesOrderStatusData = {
+    labels: (mainDetails?.salesOrderStatus || []).map(item => item.status),
+    datasets: [
+      {
+        data: (mainDetails?.salesOrderStatus || []).map(item => item.count),
+        backgroundColor: [
+          '#3B82F6', // Blue
+          '#10B981', // Emerald
+          '#F59E0B', // Amber
+          '#8B5CF6', // Purple
+          '#EF4444', // Red
+          '#EC4899', // Pink
+          '#6B7280', // Gray
+        ],
+        borderWidth: 0,
+      },
+    ],
+  }
+
+
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -444,7 +383,7 @@ export default function Dashboard() {
 
   return (
     <ERPLayout>
-      <div className="space-y-3.5 p-3.5 md:p-4 bg-slate-50/70 min-h-screen">
+      <div className="space-y-3 p-2 md:p-2 bg-slate-50/70 min-h-screen">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-3.5 py-2.5 rounded-xl shadow-2xs text-xs">
             <div className="flex items-center gap-2">
@@ -459,16 +398,34 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-                Operations Hub <Leaf className="h-4 w-4 text-emerald-600 fill-emerald-600/10" />
+                {(() => {
+                  const hour = new Date().getHours()
+                  if (hour < 12) return "Good Morning"
+                  if (hour < 18) return "Good Afternoon"
+                  return "Good Evening"
+                })()}, {user?.fullName || user?.username || (user ? `User ${user.id}` : "Guest")}!
               </h1>
-              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200/80 text-[10px] px-1.5 py-0 font-medium">
-                Live Status
-              </Badge>
             </div>
             <p className="text-slate-500 text-xs mt-0.5">Fruit Eazy ERP — Real-time business metrics, sales analytics & inventory controls</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={loadDashboardData} disabled={loading} className="h-8 text-xs px-3 shadow-2xs border-slate-200/80 hover:bg-slate-50 rounded-lg">
+            {/* PERIOD SELECTOR DROPDOWN */}
+            <div className="flex items-center gap-1.5 bg-slate-100/80 border border-slate-200/90 rounded-lg px-2.5 py-1">
+              <CalendarIcon className="h-3.5 w-3.5 text-emerald-600" />
+              <span className="text-[11px] font-semibold text-slate-500 hidden sm:inline">Period:</span>
+              <Select value={period} onValueChange={(val: "daily" | "weekly" | "monthly") => setPeriod(val)}>
+                <SelectTrigger className="h-6 text-xs border-0 bg-transparent p-0 shadow-none font-bold text-slate-800 focus:ring-0 w-[95px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem className='text-xs' value="daily">Daily</SelectItem>
+                  <SelectItem className='text-xs' value="weekly">Weekly</SelectItem>
+                  <SelectItem className='text-xs' value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button variant="outline" size="sm" onClick={() => loadDashboardData(period)} disabled={loading} className="h-8 text-xs px-3 shadow-2xs border-slate-200/80 hover:bg-slate-50 rounded-lg">
               {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5 text-emerald-600" /> : <Activity className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />}
               Refresh
             </Button>
@@ -479,114 +436,74 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* --- QUICK OPERATIONS TOOLBAR --- */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Button
-            variant="outline"
-            className="h-8 justify-start gap-2 bg-white hover:bg-emerald-50/50 border-slate-200/80 hover:border-emerald-200 text-slate-700 rounded-lg shadow-2xs text-xs font-semibold px-3 transition-colors"
-            onClick={() => router.push('/sales')}
-          >
-            <ShoppingCart className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-            <span className="truncate">New Sales Order</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-8 justify-start gap-2 bg-white hover:bg-emerald-50/50 border-slate-200/80 hover:border-emerald-200 text-slate-700 rounded-lg shadow-2xs text-xs font-semibold px-3 transition-colors"
-            onClick={() => router.push('/grn')}
-          >
-            <Package className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-            <span className="truncate">Receive Goods (GRN)</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-8 justify-start gap-2 bg-white hover:bg-amber-50/50 border-slate-200/80 hover:border-amber-200 text-slate-700 rounded-lg shadow-2xs text-xs font-semibold px-3 transition-colors"
-            onClick={() => router.push('/delivery-orders')}
-          >
-            <Truck className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-            <span className="truncate">Delivery Orders</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-8 justify-start gap-2 bg-white hover:bg-blue-50/50 border-slate-200/80 hover:border-blue-200 text-slate-700 rounded-lg shadow-2xs text-xs font-semibold px-3 transition-colors"
-            onClick={() => router.push('/customers')}
-          >
-            <Users className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-            <span className="truncate">Customers CRM</span>
-          </Button>
-        </div>
-
         {/* --- CONSOLIDATED 6-COLUMN KPI SECTION --- */}
         <KpiSection
-          title="Key Performance Summary"
-          badgeLabel="Real-time Financials"
+          title={`${periodTitle} Performance Summary`}
+          badgeLabel={`Filter: ${periodTitle}`}
           accentDot="bg-emerald-600"
           badgeCls="bg-slate-100 text-slate-700 border-slate-200"
           gridClassName="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
         >
           <KpiCard
-            label="Weekly Sales"
-            value={formatCurrency(weeklySales)}
-            trend={weeklySalesTrend}
-            trendLabel="vs last week"
+            label={`${periodTitle} Sales`}
+            value={formatCurrency(salesForPeriod)}
+            trend={salesTrendForPeriod}
+            trendLabel={prevTrendLabel}
             icon={<DollarSign />}
             accentBg="bg-emerald-50"
             accentColor="text-emerald-600"
             loading={loading}
           />
           <KpiCard
-            label="Monthly Sales"
-            value={formatCurrency(monthlySales)}
-            trend={monthlySalesTrend}
-            trendLabel="vs last month"
-            icon={<TrendingUp />}
-            accentBg="bg-emerald-50"
-            accentColor="text-emerald-600"
-            loading={loading}
-          />
-          <KpiCard
-            label="Annual Sales"
-            value={formatCurrency(annualSales)}
-            trend={annualSalesTrend}
-            trendLabel="vs last year"
-            icon={<Sparkles />}
-            accentBg="bg-emerald-50"
-            accentColor="text-emerald-600"
-            loading={loading}
-          />
-          <KpiCard
-            label="Weekly Collections"
-            value={formatCurrency(weeklyCollections)}
-            trend={weeklyCollectionsTrend}
-            trendLabel="vs last week"
-            icon={<DollarSign />}
-            accentBg="bg-amber-50"
-            accentColor="text-amber-600"
-            loading={loading}
-          />
-          <KpiCard
-            label="Monthly Collections"
-            value={formatCurrency(monthlyCollections)}
-            trend={monthlyCollectionsTrend}
-            trendLabel="vs last month"
+            label={`${periodTitle} Collections`}
+            value={formatCurrency(collectionsForPeriod)}
+            trend={collectionsTrendForPeriod}
+            trendLabel={prevTrendLabel}
             icon={<TrendingUp />}
             accentBg="bg-amber-50"
             accentColor="text-amber-600"
             loading={loading}
           />
           <KpiCard
-            label="Annual Collections"
-            value={formatCurrency(annualCollections)}
-            trend={annualCollectionsTrend}
-            trendLabel="vs last year"
-            icon={<Sparkles />}
-            accentBg="bg-amber-50"
-            accentColor="text-amber-600"
+            label="Total Orders"
+            value={(mainDetails?.summary?.totalOrders?.value || 0).toString()}
+            subtext={`${mainDetails?.summary?.totalOrders?.pending || 0} Pending`}
+            icon={<ShoppingCart />}
+            accentBg="bg-blue-50"
+            accentColor="text-blue-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Active Customers"
+            value={(mainDetails?.summary?.activeCustomers?.value || 0).toString()}
+            subtext="Registered & Active"
+            icon={<Users />}
+            accentBg="bg-purple-50"
+            accentColor="text-purple-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Inventory Value"
+            value={formatCurrency(mainDetails?.summary?.totalInventoryValue?.value || 0)}
+            subtext="Available Stock"
+            icon={<Package />}
+            accentBg="bg-indigo-50"
+            accentColor="text-indigo-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Low Stock Items"
+            value={(mainDetails?.summary?.lowStockItems?.value || 0).toString()}
+            subtext={mainDetails?.summary?.lowStockItems?.status || "Healthy"}
+            icon={<AlertTriangle />}
+            accentBg="bg-red-50"
+            accentColor="text-red-600"
             loading={loading}
           />
         </KpiSection>
 
         {/* --- CHARTS SECTION --- */}
-        <div className="grid gap-3.5 lg:grid-cols-3">
+        <div className="grid gap-3.5 lg:grid-cols-4">
           {/* Sales vs Collections Comparison Chart */}
           <Card className="lg:col-span-2 shadow-2xs border-slate-200/80 bg-white">
             <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
@@ -609,6 +526,27 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
+          {/* Sales Order Status */}
+          <Card className="shadow-2xs border-slate-200/80 bg-white">
+            <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-xs font-bold text-slate-800">Sales Order Status</CardTitle>
+                <CardDescription className="text-[10px] text-slate-400">Current status of sales orders</CardDescription>
+              </div>
+              <PieChart className="h-3.5 w-3.5 text-blue-600" />
+            </CardHeader>
+            <CardContent className="p-3 pt-2">
+              {loading ? (
+                <div className="flex items-center justify-center h-48">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                </div>
+              ) : (
+                <div className="h-48 relative">
+                  <Doughnut data={salesOrderStatusData} options={doughnutOptions} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
           {/* Delivery Order Status */}
           <Card className="shadow-2xs border-slate-200/80 bg-white">
             <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
