@@ -1920,6 +1920,7 @@ export const storesApi = {
 export const vehiclesApi = crud("vehicles")
 export const routesApi = crud("routes")
 
+
 // Enhanced Items API with scheduled GRN information
 export const itemsApi = {
   ...crud("items"),

@@ -1889,116 +1889,117 @@ export default function SalesPage() {
 
         {/* Orders List */}
         <Card>
-          <CardHeader className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-wrap items-center gap-3 w-full">
-                <div>
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search orders..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-64"
-                  />
-                </div>
-                <CustomerSelect
-                  customers={customers}
-                  value={searchCustomerId === "ALL" ? "" : searchCustomerId}
-                  onValueChange={(id) => setSearchCustomerId(id ? String(id) : "ALL")}
-                  placeholder="All Customers"
-                  showMainBadge={true}
-                  className="font-normal w-[180px]"
+          <CardHeader className="p-2 bg-slate-50/50 border-b border-slate-100">
+
+            {/* Search and Filters */}
+            <div className="flex flex-wrap items-center gap-2 w-full text-xs">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-3.5 w-3.5" />
+                <Input
+                  placeholder="Search orders..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 h-8 text-xs w-48 sm:w-56"
                 />
-                <Select
-                  value={searchSalesPersonId}
-                  onValueChange={setSearchSalesPersonId}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by sales person" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Sales Persons</SelectItem>
-                    {salesPersons.map((sp) => (
-                      <SelectItem key={sp.id} value={String(sp.id)}>{sp.fullName || 'Unknown'}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={searchRouteId}
-                  onValueChange={setSearchRouteId}
-                >
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Filter by route" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Routes</SelectItem>
-                    {routes.map((r) => (
-                      <SelectItem key={r.id} value={String(r.id)}>{r.routeName || `Route #${r.id}`}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={searchIsTaxInvoice}
-                  onValueChange={setSearchIsTaxInvoice}
-                >
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Filter by invoice type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Invoice Types</SelectItem>
-                    <SelectItem value="TAX">Tax Invoice</SelectItem>
-                    <SelectItem value="REGULAR">Regular Invoice</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={searchStatus}
-                  onValueChange={setSearchStatus}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Statuses</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Approved">Approved</SelectItem>
-                    <SelectItem value="Rejected">Rejected</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={searchDeliveryOrderStatus}
-                  onValueChange={setSearchDeliveryOrderStatus}
-                >
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Filter by DO status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All DO Statuses</SelectItem>
-                    <SelectItem value="Pending">DO Pending</SelectItem>
-                    <SelectItem value="Approved">DO Approved</SelectItem>
-                    <SelectItem value="Scheduled">DO Scheduled</SelectItem>
-                    <SelectItem value="Dispatched">DO Dispatched</SelectItem>
-                    <SelectItem value="In Transit">DO In Transit</SelectItem>
-                    <SelectItem value="Delivered">DO Delivered</SelectItem>
-                    <SelectItem value="Finalized">DO Finalized</SelectItem>
-                    <SelectItem value="Failed">DO Failed</SelectItem>
-                  </SelectContent>
-                </Select>
-                {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchRouteId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="h-8 px-2 text-gray-500 hover:text-red-600 ml-auto"
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Clear Filters
-                  </Button>
-                )}
               </div>
+              <CustomerSelect
+                customers={customers}
+                value={searchCustomerId === "ALL" ? "" : searchCustomerId}
+                onValueChange={(id) => setSearchCustomerId(id ? String(id) : "ALL")}
+                placeholder="All Customers"
+                showMainBadge={true}
+                className="h-8 text-xs font-normal w-[200px] sm:w-[220px]"
+              />
+              <Select
+                value={searchSalesPersonId}
+                onValueChange={setSearchSalesPersonId}
+              >
+                <SelectTrigger className="h-8 text-xs w-[150px]">
+                  <SelectValue placeholder="Sales Person" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem className="text-xs" value="ALL">All Sales Persons</SelectItem>
+                  {salesPersons.map((sp) => (
+                    <SelectItem className="text-xs" key={sp.id} value={String(sp.id)}>{sp.fullName || 'Unknown'}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={searchRouteId}
+                onValueChange={setSearchRouteId}
+              >
+                <SelectTrigger className="h-8 text-xs w-[130px]">
+                  <SelectValue placeholder="Route" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem className="text-xs" value="ALL">All Routes</SelectItem>
+                  {routes.map((r) => (
+                    <SelectItem className="text-xs" key={r.id} value={String(r.id)}>{r.routeName || `Route #${r.id}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={searchIsTaxInvoice}
+                onValueChange={setSearchIsTaxInvoice}
+              >
+                <SelectTrigger className="h-8 text-xs w-[135px]">
+                  <SelectValue placeholder="Invoice Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem className="text-xs" value="ALL">All Invoice Types</SelectItem>
+                  <SelectItem className="text-xs" value="TAX">Tax Invoice</SelectItem>
+                  <SelectItem className="text-xs" value="REGULAR">Regular Invoice</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={searchStatus}
+                onValueChange={setSearchStatus}
+              >
+                <SelectTrigger className="h-8 text-xs w-[120px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem className="text-xs" value="ALL">All Statuses</SelectItem>
+                  <SelectItem className="text-xs" value="Pending">Pending</SelectItem>
+                  <SelectItem className="text-xs" value="Approved">Approved</SelectItem>
+                  <SelectItem className="text-xs" value="Rejected">Rejected</SelectItem>
+                  <SelectItem className="text-xs" value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={searchDeliveryOrderStatus}
+                onValueChange={setSearchDeliveryOrderStatus}
+              >
+                <SelectTrigger className="h-8 text-xs w-[135px]">
+                  <SelectValue placeholder="DO Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem className="text-xs" value="ALL">All DO Statuses</SelectItem>
+                  <SelectItem className="text-xs" value="Pending">DO Pending</SelectItem>
+                  <SelectItem className="text-xs" value="Approved">DO Approved</SelectItem>
+                  <SelectItem className="text-xs" value="Scheduled">DO Scheduled</SelectItem>
+                  <SelectItem className="text-xs" value="Dispatched">DO Dispatched</SelectItem>
+                  <SelectItem className="text-xs" value="In Transit">DO In Transit</SelectItem>
+                  <SelectItem className="text-xs" value="Delivered">DO Delivered</SelectItem>
+                  <SelectItem className="text-xs" value="Finalized">DO Finalized</SelectItem>
+                  <SelectItem className="text-xs" value="Failed">DO Failed</SelectItem>
+                </SelectContent>
+              </Select>
+              {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchRouteId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="h-8 px-2 text-xs text-slate-500 hover:text-red-600 ml-auto flex items-center gap-1"
+                >
+                  <X className="h-3 w-3" />
+                  Clear Filters
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent className="p-0">
+
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <span className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mr-2"></span>
@@ -2192,7 +2193,7 @@ export default function SalesPage() {
                 </div>
                 <div>
                   <b>Items:</b>
-                  <Table>
+                  <Table className="text-xs">
                     <TableHeader>
                       <TableRow className="bg-gray-100">
                         <TableHead>Item</TableHead>
@@ -2223,7 +2224,7 @@ export default function SalesPage() {
 
                         return (
                           <TableRow key={idx}>
-                            <TableCell>
+                            <TableCell className="py-2">
                               <div className="font-medium">{itemName}</div>
                               <div className="text-xs text-muted-foreground space-y-1">
                                 <div className="flex items-center gap-1">
@@ -2237,8 +2238,8 @@ export default function SalesPage() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="text-right">{item.qty} {unit}</TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="py-2 text-right">{item.qty} {unit}</TableCell>
+                            <TableCell className="py-2 text-right">
                               {(() => {
                                 const freeQty = item.freeIssueQty ?? calculateFreeIssueQty(item, item.qty);
                                 return freeQty > 0 ? (
@@ -2250,12 +2251,12 @@ export default function SalesPage() {
                                 );
                               })()}
                             </TableCell>
-                            <TableCell className="text-right">{Number(unitPrice).toLocaleString('en-US', {
+                            <TableCell className="py-2 text-right">{Number(unitPrice).toLocaleString('en-US', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2
                             })}</TableCell>
 
-                            <TableCell className="text-right">
+                            <TableCell className="py-2 text-right">
                               {item.discount && item.discount > 0 ? (
                                 <div className="text-red-600">
                                   <div className="text-xs">{item.discount}%</div>
@@ -2269,7 +2270,7 @@ export default function SalesPage() {
                               )}
                             </TableCell>
 
-                            <TableCell className="text-right font-medium text-blue-700">
+                            <TableCell className="py-2 text-right font-medium text-blue-700">
                               {item.isTaxItem ? (
                                 (() => {
 
@@ -2284,7 +2285,7 @@ export default function SalesPage() {
                             </TableCell>
 
 
-                            <TableCell className="text-right font-medium text-blue-700">
+                            <TableCell className="py-2 text-right font-medium text-blue-700">
                               {item.isTaxItem ? (
                                 (() => {
                                   return `${Number(itemTotals.excludingTaxAmount).toLocaleString('en-US', {
@@ -2297,7 +2298,7 @@ export default function SalesPage() {
                               )}
                             </TableCell>
 
-                            <TableCell className="text-right font-medium text-green-700">
+                            <TableCell className="py-2 text-right font-medium text-green-700">
                               {Number(itemTotals.total).toLocaleString('en-US', {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2

@@ -97,7 +97,7 @@ export function CustomerSelect({
               {customers.map((c) => (
                 <CommandItem
                   key={c.id}
-                  value={`${c.name} ${c.parentId === null ? 'main' : ''}`} // Add 'main' to search value
+                  value={c.name}
                   onSelect={() => {
                     onValueChange(c.id)
                     setOpen(false)
@@ -109,14 +109,7 @@ export function CustomerSelect({
                       selectedValue === c.id ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <div className="flex items-center justify-between w-full">
-                    <span className="mr-2 truncate">{c.name}</span>
-                    {showMainBadge && c.parentId === null && (
-                      <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">
-                        Main
-                      </span>
-                    )}
-                  </div>
+                  {c.name}
                 </CommandItem>
               ))}
             </CommandGroup>
