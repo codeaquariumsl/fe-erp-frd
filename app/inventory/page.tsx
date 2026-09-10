@@ -53,7 +53,7 @@ export default function InventoryPage() {
           storesApi.getAll(),
           getAllStock({ locationId: Number(locationId) || 1 }),
           categoriesApi.getAll(),
-          salesOrdersApi.getAll({ status: "Approved", limit: 1000 }).catch(() => ({ data: [] }))
+          salesOrdersApi.getAll({ status: "Approved" }).catch(() => ({ data: [] }))
         ])
 
         const storesData = Array.isArray(storesResponse) ? storesResponse : []

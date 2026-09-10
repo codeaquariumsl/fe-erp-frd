@@ -1073,8 +1073,10 @@ export default function DeliveryOrdersPage() {
         vehicleId: editVehicle ? Number(editVehicle) : null,
         routeId: editRoute ? Number(editRoute) : null,
         items: editItems.map(item => ({
+          id: item.id,
           itemId: item.itemId,
           qty: item.qty,
+          freeQty: Number(item.freeQty !== undefined ? item.freeQty : (item.freeIssueQty || 0)),
           itemName: item.itemName,
           batchId: editItemBatches[item.id] ? Number(editItemBatches[item.id]) : null, // Include selected batch
           storeId: editItemStores[item.id] ? Number(editItemStores[item.id]) : null, // Include selected store
@@ -3046,17 +3048,24 @@ export default function DeliveryOrdersPage() {
                                               </div>
                                             </TableCell>
                                             <TableCell>
-                                              <Input
-                                                type="number"
-                                                placeholder="Qty"
-                                                value={item.qty}
-                                                onChange={e => {
-                                                  const updated = [...editItems]
-                                                  updated[index].qty = Number(e.target.value)
-                                                  setEditItems(updated)
-                                                }}
-                                                className="w-20"
-                                              />
+                                              <div className="flex items-center gap-2">
+                                                <Input
+                                                  type="number"
+                                                  placeholder="Qty"
+                                                  value={item.qty}
+                                                  onChange={e => {
+                                                    const updated = [...editItems]
+                                                    updated[index].qty = Number(e.target.value)
+                                                    setEditItems(updated)
+                                                  }}
+                                                  className="w-20"
+                                                />
+                                                {Number(item.freeQty || item.freeIssueQty || 0) > 0 && (
+                                                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 font-semibold border-purple-200 whitespace-nowrap">
+                                                    +{item.freeQty || item.freeIssueQty} Free
+                                                  </Badge>
+                                                )}
+                                              </div>
                                             </TableCell>
                                             <TableCell>{unit}</TableCell>
                                             <TableCell>
