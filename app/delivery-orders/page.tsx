@@ -2249,7 +2249,7 @@ export default function DeliveryOrdersPage() {
             <Table className="text-xs">
               <TableHeader>
                 <TableRow className="bg-gray-100">
-                  <TableHead className="w-10">
+                  <TableHead className="w-5">
                     <input
                       type="checkbox"
                       className="h-4 w-4 cursor-pointer"
@@ -2287,9 +2287,7 @@ export default function DeliveryOrdersPage() {
                   <TableHead>Customer</TableHead>
                   <TableHead>Dispatch Date</TableHead>
                   <TableHead>Delivery Date</TableHead>
-                  {/* <TableHead>Vehicle</TableHead> */}
                   <TableHead>Route</TableHead>
-                  {/* <TableHead>Weight</TableHead> */}
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -2328,72 +2326,61 @@ export default function DeliveryOrdersPage() {
                       </TableCell>
                       <TableCell className="py-2">
                         <div>
-                          <div className="font-medium">{order.doNumber}</div>
-                          <div className="text-xs text-muted-foreground">{order.SalesOrder.orderNumber}</div>
+                          <div className="font-medium text-[11px]">{order.doNumber}</div>
+                          <div className="text-muted-foreground text-[11px]">{order.SalesOrder.orderNumber}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="py-2 text-[11px]">
                         {format(new Date(order.orderDate), "yyyy-MM-dd")}
                       </TableCell>
                       <TableCell className="py-2">
                         <div>
-                          <div className="font-medium">{order.SalesOrder.Customer.name}
+                          <div className="font-medium text-[11px]">{order.SalesOrder.Customer.name}
                             <span> • </span>
-                            <span className={`px-2 py-1 rounded text-xs ${order.SalesOrder.isDelivery
+                            <span className={`px-2 py-1 rounded text-[10px] ${order.SalesOrder.isDelivery
                               ? 'bg-green-100 text-green-700'
                               : 'bg-blue-100 text-blue-700'
                               }`}>
                               {order.SalesOrder.isDelivery ? 'Delivery' : 'Pickup'}
                             </span>
                           </div>
-                          {/* <div className="text-xs text-muted-foreground flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {order.deliveryAddress?.split(" - ")[1] || order.deliveryAddress}
-                          </div> */}
                         </div>
                       </TableCell>
                       <TableCell className="py-2">
-                        <div className="font-sm">{format(new Date(order.SalesOrder.dispatchDate), "yyyy-MM-dd")}</div>
+                        <div className="text-[11px]">{format(new Date(order.SalesOrder.dispatchDate), "yyyy-MM-dd")}</div>
                       </TableCell>
                       <TableCell className="py-2">
-                        <div className="font-sm">{order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd") : "-"}</div>
+                        <div className="text-[11px]">{order.deliveryDate ? format(new Date(order.deliveryDate), "yyyy-MM-dd") : "-"}</div>
                       </TableCell>
-                      {/* <TableCell className="py-2">
-                        <div>
-                          <div className="font-medium">{order.vehicleId ? order.Vehicle.vehicleNumber : <div className="text-xs text-muted-foreground">Not assigned</div>}</div>
-                          <div className="text-xs text-muted-foreground">{order.driverId ? order.Driver.name : <div className="text-xs text-muted-foreground">-</div>}</div>
-                        </div>
-                      </TableCell> */}
                       <TableCell className="py-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-[11px]">
                           <Route className="h-4 w-4 text-muted-foreground" />
                           {order.vehicleId ? order.Route?.routeName : <div className="text-xs text-muted-foreground">Not assigned</div>}
                         </div>
                       </TableCell>
-                      {/* <TableCell>{order.totalWeight} kg</TableCell> */}
                       <TableCell className="py-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex text-[11px] items-center gap-2">
                           {getStatusIcon(order.status)}
                           {getStatusBadge(order.status)}
                         </div>
                       </TableCell>
                       <TableCell className="py-2">
                         <div className="flex items-center space-x-2">
-                          <Button className="h-8 w-8" variant="outline" size="sm" onClick={() => handleViewDetails(order)}>
+                          <Button className="h-7 w-7" variant="outline" size="sm" onClick={() => handleViewDetails(order)}>
                             <Eye className="h-4 w-4 text-blue-500" />
                           </Button>
-                          <Button className="h-8 w-8" variant="outline" size="sm" onClick={() => handlePrintPDF(order)} title="Print PDF">
+                          <Button className="h-7 w-7" variant="outline" size="sm" onClick={() => handlePrintPDF(order)} title="Print PDF">
                             <Printer className="h-4 w-4 text-green-500" />
                           </Button>
                           {(order.status === "Pending") ? (
                             <>
-                              <Button className="h-8 w-8" variant="outline" size="sm" onClick={() => handleEditOrder(order)}>
+                              <Button className="h-7 w-7" variant="outline" size="sm" onClick={() => handleEditOrder(order)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
                               {hasPermission("delivery-orders:delete") && (
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button className="h-8 w-8" variant="outline" size="sm">
+                                    <Button className="h-7 w-7" variant="outline" size="sm">
                                       <Trash2 className="h-4 w-4 text-red-500" />
                                     </Button>
                                   </AlertDialogTrigger>
