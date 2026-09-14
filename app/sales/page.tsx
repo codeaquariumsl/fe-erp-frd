@@ -97,6 +97,8 @@ export default function SalesPage() {
     totalApprovedAmount: 0,
     totalPendingCount: 0,
     totalPendingAmount: 0,
+    totalDeliveredCount: 0,
+    totalDeliveredAmount: 0,
   })
   const [customers, setCustomers] = useState<CustomerWithRoutes[]>([])
   const [availableItems, setAvailableItems] = useState<any[]>([])
@@ -173,6 +175,8 @@ export default function SalesPage() {
           totalApprovedAmount: result.summary.totalApprovedAmount || 0,
           totalPendingCount: result.summary.totalPendingCount || 0,
           totalPendingAmount: result.summary.totalPendingAmount || 0,
+          totalDeliveredCount: result.summary.totalDeliveredCount || 0,
+          totalDeliveredAmount: result.summary.totalDeliveredAmount || 0,
         })
       }
     } catch (err: any) {
@@ -1880,9 +1884,14 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {salesOrders.filter((order) => order.deliveryOrderStatus === "Delivered").length}
+                {summaryData.totalDeliveredCount}
               </div>
-              <p className="text-xs text-muted-foreground">Current page completed</p>
+              <p className="text-xs text-muted-foreground">
+                LKR {summaryData.totalDeliveredAmount.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </p>
             </CardContent>
           </Card>
         </div>
