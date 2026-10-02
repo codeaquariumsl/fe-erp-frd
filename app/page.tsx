@@ -29,7 +29,8 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
-  CalendarIcon
+  CalendarIcon,
+  CreditCard
 } from "lucide-react"
 import {
   dashboardApi,
@@ -126,7 +127,7 @@ const ALL_ROUTES = [
 export default function Dashboard() {
   const router = useRouter()
   const { hasPermission, user, isLoading: authLoading } = useAuth()
-  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "all">("monthly")
+  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "all">("all")
   const [loading, setLoading] = useState(true)
   const [mainDetails, setMainDetails] = useState<DashboardMainDetails | null>(null)
   const [topSellingItems, setTopSellingItems] = useState<any[]>([])
@@ -238,6 +239,10 @@ export default function Dashboard() {
   const collectionsForPeriod = mainDetails?.summary?.monthlyCollections?.value || 0
   const collectionsTrendForPeriod = mainDetails?.summary?.monthlyCollections?.trend || 0
 
+  const overallOutstanding = mainDetails?.summary?.totalOutstanding?.overallValue ?? mainDetails?.summary?.totalOutstanding?.value ?? 0
+  const overallUnpaidCount = mainDetails?.summary?.totalOutstanding?.totalUnpaidInvoices ?? mainDetails?.summary?.totalOutstanding?.unpaidInvoices ?? 0
+  const creditNotesDeducted = mainDetails?.summary?.totalOutstanding?.creditNotesDeducted ?? mainDetails?.summary?.totalOutstanding?.totalCreditNotesDeducted ?? 0
+
   // Dynamic Sales vs Collections Chart Data from mainDetails API endpoint
   const chartData = useMemo(() => {
     return {
@@ -297,20 +302,46 @@ export default function Dashboard() {
     }
   }
 
+  // Status color mappings
+  const getDeliveryOrderStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
+        return '#3B82F6' // Blue
+      case 'in transit':
+      case 'intransit':
+      case 'finalized':
+        return '#8b5cf6' // purple
+      case 'approved':
+        return '#10B981' // Emerald
+      case 'pending':
+        return '#F59E0B' // Amber
+      case 'cancelled':
+        return '#EF4444' // Red
+      default:
+        return '#6B7280' // Gray
+    }
+  }
+
+  const getSalesOrderStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'cancelled':
+        return '#EF4444' // Red
+      case 'pending':
+        return '#F59E0B' // Amber
+      case 'approved':
+        return '#10B981' // Emerald
+      default:
+        return '#6B7280' // Gray
+    }
+  }
+
   // 4. Delivery Order Status
   const orderStatusData = {
     labels: (mainDetails?.deliveryOrderStatus || []).map(item => item.status),
     datasets: [
       {
         data: (mainDetails?.deliveryOrderStatus || []).map(item => item.count),
-        backgroundColor: [
-          '#10B981', // Emerald
-          '#F59E0B', // Amber
-          '#3B82F6', // Blue
-          '#EF4444', // Red
-          '#6B7280', // Gray
-          '#8B5CF6', // Purple
-        ],
+        backgroundColor: (mainDetails?.deliveryOrderStatus || []).map(item => getDeliveryOrderStatusColor(item.status)),
         borderWidth: 0,
       },
     ],
@@ -322,15 +353,7 @@ export default function Dashboard() {
     datasets: [
       {
         data: (mainDetails?.salesOrderStatus || []).map(item => item.count),
-        backgroundColor: [
-          '#3B82F6', // Blue
-          '#10B981', // Emerald
-          '#F59E0B', // Amber
-          '#8B5CF6', // Purple
-          '#EF4444', // Red
-          '#EC4899', // Pink
-          '#6B7280', // Gray
-        ],
+        backgroundColor: (mainDetails?.salesOrderStatus || []).map(item => getSalesOrderStatusColor(item.status)),
         borderWidth: 0,
       },
     ],
@@ -441,13 +464,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* --- CONSOLIDATED 6-COLUMN KPI SECTION --- */}
+        {/* --- CONSOLIDATED 7-COLUMN KPI SECTION --- */}
         <KpiSection
           title={`${periodTitle} Performance Summary`}
           badgeLabel={`Filter: ${periodTitle}`}
           accentDot="bg-emerald-600"
           badgeCls="bg-slate-100 text-slate-700 border-slate-200"
-          gridClassName="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
+          gridClassName="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
         >
           <KpiCard
             label={`${periodTitle} Sales`}
@@ -458,6 +481,7 @@ export default function Dashboard() {
             accentBg="bg-emerald-50"
             accentColor="text-emerald-600"
             loading={loading}
+            onClick={() => router.push('/invoices')}
           />
           <KpiCard
             label={`${periodTitle} Collections`}
@@ -468,6 +492,86 @@ export default function Dashboard() {
             accentBg="bg-amber-50"
             accentColor="text-amber-600"
             loading={loading}
+            onClick={() => router.push('/receipts')}
+          />
+          <KpiCard
+            label="Customer Outstanding"
+            value={formatCurrency(overallOutstanding)}
+            trendLabel={
+              creditNotesDeducted > 0 ? (
+                <div className="flex items-center gap-1.5 flex-wrap text-[10px] leading-tight">
+                  <span className="text-slate-500 font-medium">{overallUnpaidCount} Unpaid</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="inline-flex items-center text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80 font-medium" title={`Total Credit Note / Return Deductions: ${formatCurrency(creditNotesDeducted)}`}>
+                    -{formatCurrency(creditNotesDeducted)} CN
+                  </span>
+                </div>
+              ) : (
+                <span className="text-slate-400">{overallUnpaidCount} Unpaid Invoices</span>
+              )
+            }
+            icon={<CreditCard />}
+            accentBg="bg-orange-50"
+            accentColor="text-orange-600"
+            loading={loading}
+            onClick={() => router.push('/reports/customer-outstanding')}
+            infoTooltip={
+              <div className="space-y-2 font-sans">
+                <p className="font-bold text-[11px] text-orange-300 uppercase tracking-wide">
+                  Receivables Reconciliation
+                </p>
+                {period === "all" ? (
+                  <div className="space-y-1.5 text-[11px] text-slate-200">
+                    <div className="flex justify-between gap-3">
+                      <span>Total Invoiced Sales:</span>
+                      <span className="font-semibold text-white">{formatCurrency(salesForPeriod)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3 text-emerald-400">
+                      <span>Less Total Collections:</span>
+                      <span className="font-semibold">- {formatCurrency(collectionsForPeriod)}</span>
+                    </div>
+                    {creditNotesDeducted > 0 && (
+                      <div className="flex justify-between gap-3 text-amber-300">
+                        <span>Less Credit Notes / Returns:</span>
+                        <span className="font-semibold">- {formatCurrency(creditNotesDeducted)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-slate-700 pt-1.5 flex justify-between gap-3 font-bold text-orange-400">
+                      <span>Net Outstanding:</span>
+                      <span>{formatCurrency(overallOutstanding)}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 pt-0.5 border-t border-slate-800">
+                      Formula: Sales − Collections − Credit Notes = Net Outstanding
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 text-[11px] text-slate-200">
+                    <div className="flex justify-between gap-3 font-semibold text-orange-300">
+                      <span>Total Unpaid Debt:</span>
+                      <span>{formatCurrency(overallOutstanding)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3 text-slate-400 text-[10px]">
+                      <span>Open Unpaid Invoices:</span>
+                      <span>{overallUnpaidCount} invoices</span>
+                    </div>
+                    {creditNotesDeducted > 0 && (
+                      <div className="flex justify-between gap-3 text-amber-300 text-[10px]">
+                        <span>Credit Notes Set-off:</span>
+                        <span>-{formatCurrency(creditNotesDeducted)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-slate-700 pt-1 text-[10px] text-slate-400">
+                      <span>{periodTitle} Invoiced: {formatCurrency(salesForPeriod)}</span>
+                      <br />
+                      <span>{periodTitle} Receipts: {formatCurrency(collectionsForPeriod)}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 pt-0.5 border-t border-slate-800">
+                      Switch period to &quot;All&quot; for complete all-time formula reconciliation.
+                    </p>
+                  </div>
+                )}
+              </div>
+            }
           />
           <KpiCard
             label="Total Orders"
@@ -477,6 +581,7 @@ export default function Dashboard() {
             accentBg="bg-blue-50"
             accentColor="text-blue-600"
             loading={loading}
+            onClick={() => router.push('/sales')}
           />
           <KpiCard
             label="Active Customers"
@@ -486,6 +591,7 @@ export default function Dashboard() {
             accentBg="bg-purple-50"
             accentColor="text-purple-600"
             loading={loading}
+            onClick={() => router.push('/customers')}
           />
           <KpiCard
             label="Inventory Value"
@@ -495,8 +601,9 @@ export default function Dashboard() {
             accentBg="bg-indigo-50"
             accentColor="text-indigo-600"
             loading={loading}
+            onClick={() => router.push('/inventory')}
           />
-          <KpiCard
+          {/* <KpiCard
             label="Low Stock Items"
             value={(mainDetails?.summary?.lowStockItems?.value || 0).toString()}
             trendLabel={mainDetails?.summary?.lowStockItems?.status || "Healthy"}
@@ -504,7 +611,8 @@ export default function Dashboard() {
             accentBg="bg-red-50"
             accentColor="text-red-600"
             loading={loading}
-          />
+            onClick={() => router.push('/inventory')}
+          /> */}
         </KpiSection>
 
         {/* --- CHARTS SECTION --- */}
@@ -518,10 +626,10 @@ export default function Dashboard() {
                   {period === "daily"
                     ? "Invoiced totals vs received payments (last 7 days)"
                     : period === "weekly"
-                    ? "Invoiced totals vs received payments (last 4 weeks)"
-                    : period === "all"
-                    ? "Invoiced totals vs received payments (last 12 months)"
-                    : "Invoiced totals vs received payments (last 6 months)"}
+                      ? "Invoiced totals vs received payments (last 4 weeks)"
+                      : period === "all"
+                        ? "Invoiced totals vs received payments (last 12 months)"
+                        : "Invoiced totals vs received payments (last 6 months)"}
                 </CardDescription>
               </div>
               <BarChart3 className="h-3.5 w-3.5 text-emerald-600" />

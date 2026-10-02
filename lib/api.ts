@@ -189,6 +189,14 @@ export interface DashboardMainDetails {
     totalInventoryValue: { value: number; trend: number }
     monthlySales: { value: number; trend: number }
     monthlyCollections?: { value: number; trend: number }
+    totalOutstanding?: {
+      value: number
+      overallValue?: number
+      unpaidInvoices?: number
+      totalUnpaidInvoices?: number
+      creditNotesDeducted?: number
+      totalCreditNotesDeducted?: number
+    }
     activeCustomers: { value: number; trend: number }
     totalOrders: { value: number; pending: number }
     lowStockItems: { value: number; status: string }
