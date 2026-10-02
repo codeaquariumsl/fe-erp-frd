@@ -10,6 +10,22 @@ export default function ReceiptsLoading() {
         <Skeleton className="h-4 w-1/3" />
       </div>
 
+      {/* Summary Cards Skeleton */}
+      <div className="grid gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="h-24 flex flex-col justify-center">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-4 rounded-full" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-7 w-16 mb-1" />
+              <Skeleton className="h-3 w-28" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {/* Filter and Search Skeleton */}
       <Card>
         <CardHeader>

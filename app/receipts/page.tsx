@@ -1,6 +1,6 @@
-﻿"use client"
+"use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { ERPLayout } from "@/components/layouts/erp-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Plus, Eye, Trash2, Search, Filter, X, Printer, ChevronsUpDown, Check } from "lucide-react"
+import { CalendarIcon, Plus, Eye, Trash2, Search, Filter, X, Printer, ChevronsUpDown, Check, Receipt as ReceiptIcon, Banknote, CreditCard, Landmark } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
@@ -182,13 +182,77 @@ export default function ReceiptsPage() {
         ).values()
     )
 
+    const summaryData = useMemo(() => {
+        let totalCount = filteredReceipts.length
+        let totalAmount = 0
+        let cashCount = 0
+        let cashAmount = 0
+        let chequeCount = 0
+        let chequeAmount = 0
+        let bankOtherCount = 0
+        let bankOtherAmount = 0
+
+        for (const receipt of filteredReceipts) {
+            const paid = typeof receipt.totalPaid === "number" ? receipt.totalPaid : parseFloat(String(receipt.totalPaid || 0))
+            totalAmount += paid
+
+            const payments = (receipt.receiptPayments && receipt.receiptPayments.length > 0)
+                ? receipt.receiptPayments
+                : (receipt.payments || [])
+
+            let rCash = 0
+            let rCheque = 0
+            let rBankOther = 0
+
+            if (payments.length > 0) {
+                for (const p of payments) {
+                    const amt = typeof p.paymentAmount === "number" ? p.paymentAmount : parseFloat(String(p.paymentAmount || 0))
+                    const typeName = (p.PaymentType?.paymentTypeName || "").toLowerCase()
+                    if (typeName.includes("cash") || p.paymentTypeId === 1) {
+                        rCash += amt
+                    } else if (typeName.includes("cheque") || p.paymentTypeId === 4) {
+                        rCheque += amt
+                    } else {
+                        rBankOther += amt
+                    }
+                }
+            } else {
+                rCash += paid
+            }
+
+            if (rCash > 0) {
+                cashCount++
+                cashAmount += rCash
+            }
+            if (rCheque > 0) {
+                chequeCount++
+                chequeAmount += rCheque
+            }
+            if (rBankOther > 0) {
+                bankOtherCount++
+                bankOtherAmount += rBankOther
+            }
+        }
+
+        return {
+            totalCount,
+            totalAmount,
+            cashCount,
+            cashAmount,
+            chequeCount,
+            chequeAmount,
+            bankOtherCount,
+            bankOtherAmount,
+        }
+    }, [filteredReceipts])
+
     const totalPages = Math.ceil(filteredReceipts.length / itemsPerPage)
 
     if (loading) return <ERPLayout><ReceiptsLoading /></ERPLayout>
 
     return (
         <ERPLayout>
-            <div className="space-y-2">
+            <div className="space-y-4">
                 {/* Header with Create Button */}
                 <div className="flex items-center justify-between">
                     <div>
@@ -199,6 +263,79 @@ export default function ReceiptsPage() {
                         <Plus className="h-4 w-4" />
                         Create Receipt
                     </Button>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid gap-4 md:grid-cols-4">
+                    <Card className="h-24 flex flex-col justify-center">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Receipts</CardTitle>
+                            <ReceiptIcon className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{summaryData.totalCount}</div>
+                            <p className="text-xs text-muted-foreground">
+                                LKR {summaryData.totalAmount.toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="h-24 flex flex-col justify-center">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Cash Receipts</CardTitle>
+                            <Banknote className="h-4 w-4 text-green-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {summaryData.cashCount}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                LKR {summaryData.cashAmount.toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="h-24 flex flex-col justify-center">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Cheque Receipts</CardTitle>
+                            <CreditCard className="h-4 w-4 text-blue-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {summaryData.chequeCount}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                LKR {summaryData.chequeAmount.toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="h-24 flex flex-col justify-center">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Bank & Other</CardTitle>
+                            <Landmark className="h-4 w-4 text-purple-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {summaryData.bankOtherCount}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                LKR {summaryData.bankOtherAmount.toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })}
+                            </p>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* Filters Card */}
