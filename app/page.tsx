@@ -126,7 +126,7 @@ const ALL_ROUTES = [
 export default function Dashboard() {
   const router = useRouter()
   const { hasPermission, user, isLoading: authLoading } = useAuth()
-  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("monthly")
+  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "all">("monthly")
   const [loading, setLoading] = useState(true)
   const [mainDetails, setMainDetails] = useState<DashboardMainDetails | null>(null)
   const [topSellingItems, setTopSellingItems] = useState<any[]>([])
@@ -156,16 +156,20 @@ export default function Dashboard() {
     try {
       const now = new Date()
       let startDateStr: string | undefined
-      let endDateStr: string = format(now, "yyyy-MM-dd")
+      let endDateStr: string | undefined = format(now, "yyyy-MM-dd")
 
       if (currentPeriod === "daily") {
         startDateStr = format(now, "yyyy-MM-dd")
       } else if (currentPeriod === "weekly") {
         const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
         startDateStr = format(start, "yyyy-MM-dd")
-      } else {
+      } else if (currentPeriod === "monthly") {
         const start = new Date(now.getFullYear(), now.getMonth(), 1)
         startDateStr = format(start, "yyyy-MM-dd")
+      } else {
+        // "all"
+        startDateStr = undefined
+        endDateStr = undefined
       }
 
       const [
@@ -225,8 +229,8 @@ export default function Dashboard() {
   }
 
   // Period-based Metrics calculation
-  const periodTitle = period === "daily" ? "Daily" : period === "weekly" ? "Weekly" : "Monthly"
-  const prevTrendLabel = period === "daily" ? "vs yesterday" : period === "weekly" ? "vs prev week" : "vs prev month"
+  const periodTitle = period === "daily" ? "Daily" : period === "weekly" ? "Weekly" : period === "all" ? "All Time" : "Monthly"
+  const prevTrendLabel = period === "daily" ? "vs yesterday" : period === "weekly" ? "vs prev week" : period === "all" ? "all-time" : "vs prev month"
 
   const salesForPeriod = mainDetails?.summary?.monthlySales?.value || 0
   const salesTrendForPeriod = mainDetails?.summary?.monthlySales?.trend || 0
@@ -413,7 +417,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-1.5 bg-slate-100/80 border border-slate-200/90 rounded-lg px-2.5 py-1">
               <CalendarIcon className="h-3.5 w-3.5 text-emerald-600" />
               <span className="text-[11px] font-semibold text-slate-500 hidden sm:inline">Period:</span>
-              <Select value={period} onValueChange={(val: "daily" | "weekly" | "monthly") => setPeriod(val)}>
+              <Select value={period} onValueChange={(val: "daily" | "weekly" | "monthly" | "all") => setPeriod(val)}>
                 <SelectTrigger className="h-6 text-xs border-0 bg-transparent p-0 shadow-none font-bold text-slate-800 focus:ring-0 w-[95px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -421,6 +425,7 @@ export default function Dashboard() {
                   <SelectItem className='text-xs' value="daily">Daily</SelectItem>
                   <SelectItem className='text-xs' value="weekly">Weekly</SelectItem>
                   <SelectItem className='text-xs' value="monthly">Monthly</SelectItem>
+                  <SelectItem className='text-xs' value="all">All</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -447,8 +452,8 @@ export default function Dashboard() {
           <KpiCard
             label={`${periodTitle} Sales`}
             value={formatCurrency(salesForPeriod)}
-            trend={salesTrendForPeriod}
-            trendLabel={prevTrendLabel}
+            trend={period === "all" ? undefined : salesTrendForPeriod}
+            trendLabel={period === "all" ? "All recorded sales" : prevTrendLabel}
             icon={<DollarSign />}
             accentBg="bg-emerald-50"
             accentColor="text-emerald-600"
@@ -457,8 +462,8 @@ export default function Dashboard() {
           <KpiCard
             label={`${periodTitle} Collections`}
             value={formatCurrency(collectionsForPeriod)}
-            trend={collectionsTrendForPeriod}
-            trendLabel={prevTrendLabel}
+            trend={period === "all" ? undefined : collectionsTrendForPeriod}
+            trendLabel={period === "all" ? "All recorded receipts" : prevTrendLabel}
             icon={<TrendingUp />}
             accentBg="bg-amber-50"
             accentColor="text-amber-600"
@@ -467,7 +472,6 @@ export default function Dashboard() {
           <KpiCard
             label="Total Orders"
             value={(mainDetails?.summary?.totalOrders?.value || 0).toString()}
-            trend={0}
             trendLabel={`${mainDetails?.summary?.totalOrders?.pending || 0} Pending`}
             icon={<ShoppingCart />}
             accentBg="bg-blue-50"
@@ -477,7 +481,6 @@ export default function Dashboard() {
           <KpiCard
             label="Active Customers"
             value={(mainDetails?.summary?.activeCustomers?.value || 0).toString()}
-            trend={0}
             trendLabel="Registered & Active"
             icon={<Users />}
             accentBg="bg-purple-50"
@@ -487,7 +490,6 @@ export default function Dashboard() {
           <KpiCard
             label="Inventory Value"
             value={formatCurrency(mainDetails?.summary?.totalInventoryValue?.value || 0)}
-            trend={0}
             trendLabel="Available Stock"
             icon={<Package />}
             accentBg="bg-indigo-50"
@@ -497,7 +499,6 @@ export default function Dashboard() {
           <KpiCard
             label="Low Stock Items"
             value={(mainDetails?.summary?.lowStockItems?.value || 0).toString()}
-            trend={0}
             trendLabel={mainDetails?.summary?.lowStockItems?.status || "Healthy"}
             icon={<AlertTriangle />}
             accentBg="bg-red-50"
@@ -513,7 +514,15 @@ export default function Dashboard() {
             <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-xs font-bold text-slate-800">Sales vs Collections Comparison</CardTitle>
-                <CardDescription className="text-[10px] text-slate-400">Invoiced totals vs received payments (last 6 months)</CardDescription>
+                <CardDescription className="text-[10px] text-slate-400">
+                  {period === "daily"
+                    ? "Invoiced totals vs received payments (last 7 days)"
+                    : period === "weekly"
+                    ? "Invoiced totals vs received payments (last 4 weeks)"
+                    : period === "all"
+                    ? "Invoiced totals vs received payments (last 12 months)"
+                    : "Invoiced totals vs received payments (last 6 months)"}
+                </CardDescription>
               </div>
               <BarChart3 className="h-3.5 w-3.5 text-emerald-600" />
             </CardHeader>
