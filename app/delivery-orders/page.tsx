@@ -13,8 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, MoreHorizontal, Truck, MapPin, Clock, CheckCircle, CheckCircle2, AlertTriangle, Eye, Edit, Trash2, Route, Printer, FileText, BarChart3, X, Package, Send, CircleDot, HourglassIcon, Loader2, Check, ChevronsUpDown, FileDown } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Truck, MapPin, Clock, CheckCircle, CheckCircle2, AlertTriangle, Eye, Edit, Trash2, Route, Printer, FileText, BarChart3, X, Package, Send, CircleDot, HourglassIcon, Loader2, Check, ChevronsUpDown, FileDown, XCircle } from "lucide-react"
 import { format } from "date-fns"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -889,6 +890,37 @@ export default function DeliveryOrdersPage() {
     // Clear confirm state for all orders
     setConfirmError("")
   }
+
+  // Cancel Delivery Order state
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState("")
+  const [cancelReasonError, setCancelReasonError] = useState("")
+  const [cancelLoading, setCancelLoading] = useState(false)
+
+  const handleCancelOrder = async () => {
+    if (!selectedOrder?.id) return
+    if (!cancelReason.trim()) {
+      setCancelReasonError("Cancellation reason is required")
+      return
+    }
+    setCancelLoading(true)
+    setCancelReasonError("")
+    try {
+      await deliveryOrdersApi.cancel(selectedOrder.id, { cancelReason: cancelReason.trim() })
+      await fetchDeliveryOrders()
+      setCancelDialogOpen(false)
+      setViewDialogOpen(false)
+      setCancelReason("")
+      toastr.success(`Delivery Order ${selectedOrder.doNumber} and related Sales Order cancelled successfully`)
+    } catch (err: any) {
+      const msg = err?.error || err?.message || "Failed to cancel delivery order"
+      setCancelReasonError(msg)
+      toastr.error(msg)
+    } finally {
+      setCancelLoading(false)
+    }
+  }
+
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editOrder, setEditOrder] = useState<any | null>(null)
@@ -1486,6 +1518,8 @@ export default function DeliveryOrdersPage() {
         )
       case "Failed":
         return <Badge variant="destructive">Failed</Badge>
+      case "Cancelled":
+        return <Badge variant="destructive">Cancelled</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -1509,6 +1543,8 @@ export default function DeliveryOrdersPage() {
         return <Package className="h-4 w-4 text-green-600" />
       case "Failed":
         return <AlertTriangle className="h-4 w-4 text-red-500" />
+      case "Cancelled":
+        return <XCircle className="h-4 w-4 text-red-500" />
       default:
         return <HourglassIcon className="h-4 w-4 text-gray-400" />
     }
@@ -2220,6 +2256,7 @@ export default function DeliveryOrdersPage() {
                     <SelectItem value="Delivered">Delivered</SelectItem>
                     <SelectItem value="Finalized">Finalized</SelectItem>
                     <SelectItem value="Failed">Failed</SelectItem>
+                    <SelectItem value="Cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
                 {/* Date filter */}
@@ -2334,17 +2371,7 @@ export default function DeliveryOrdersPage() {
                         {format(new Date(order.orderDate), "yyyy-MM-dd")}
                       </TableCell>
                       <TableCell className="py-2">
-                        <div>
-                          <div className="font-medium text-[11px]">{order.SalesOrder.Customer.name}
-                            <span> • </span>
-                            <span className={`px-2 py-1 rounded text-[10px] ${order.SalesOrder.isDelivery
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-blue-100 text-blue-700'
-                              }`}>
-                              {order.SalesOrder.isDelivery ? 'Delivery' : 'Pickup'}
-                            </span>
-                          </div>
-                        </div>
+                        {order.SalesOrder.Customer.name}
                       </TableCell>
                       <TableCell className="py-2">
                         <div className="text-[11px]">{format(new Date(order.SalesOrder.dispatchDate), "yyyy-MM-dd")}</div>
@@ -2480,6 +2507,12 @@ export default function DeliveryOrdersPage() {
                                   <div className="text-xs text-muted-foreground">Status</div>
                                   <div>{getStatusBadge(selectedOrder.status)}</div>
                                 </div>
+                                {selectedOrder.status === "Cancelled" && selectedOrder.cancelReason && (
+                                  <div className="col-span-3 bg-red-50 p-3 rounded-lg border border-red-200">
+                                    <div className="text-xs font-semibold text-red-800">Cancellation Reason:</div>
+                                    <div className="text-sm text-red-700 mt-1">{selectedOrder.cancelReason}</div>
+                                  </div>
+                                )}
                                 {/* <div>
                                   <div className="text-xs text-muted-foreground">Total Weight</div>
                                   <div>{selectedOrder.totalWeight} kg</div>
@@ -2890,8 +2923,104 @@ export default function DeliveryOrdersPage() {
                                     </Button>
                                   </div>
                                 )}
+                              {/* Cancel Delivery Order button for Approved orders */}
+                              {selectedOrder?.status === "Approved" && (
+                                <div className="flex justify-end pt-4 border-t mt-4">
+                                  <Button
+                                    variant="outline"
+                                    className="text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
+                                    onClick={() => {
+                                      setCancelReason("")
+                                      setCancelReasonError("")
+                                      setCancelDialogOpen(true)
+                                    }}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancel Delivery Order
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )}
+                        </DialogContent>
+                      </Dialog>
+                      {/* Cancel Delivery Order Dialog */}
+                      <Dialog open={cancelDialogOpen} onOpenChange={(open) => {
+                        if (!cancelLoading) {
+                          setCancelDialogOpen(open)
+                          if (!open) {
+                            setCancelReason("")
+                            setCancelReasonError("")
+                          }
+                        }
+                      }}>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-red-600 flex items-center gap-2">
+                              <XCircle className="h-5 w-5 text-red-600" />
+                              Cancel Delivery Order
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 py-2">
+                            <p className="text-sm text-muted-foreground">
+                              Are you sure you want to cancel Delivery Order <strong>{selectedOrder?.doNumber}</strong>?
+                              {selectedOrder?.SalesOrder?.orderNumber && (
+                                <>
+                                  <br />
+                                  This will also cancel the associated Sales Order <strong>{selectedOrder.SalesOrder.orderNumber}</strong>.
+                                </>
+                              )}
+                            </p>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="cancelReasonInput" className="text-sm font-medium">
+                                Cancellation Reason <span className="text-red-500">*</span>
+                              </Label>
+                              <Textarea
+                                id="cancelReasonInput"
+                                placeholder="Enter reason for cancellation (required)..."
+                                value={cancelReason}
+                                onChange={(e) => {
+                                  setCancelReason(e.target.value)
+                                  if (cancelReasonError && e.target.value.trim()) {
+                                    setCancelReasonError("")
+                                  }
+                                }}
+                                className={cn(
+                                  "min-h-[90px] resize-none",
+                                  cancelReasonError && "border-red-500 focus-visible:ring-red-500"
+                                )}
+                              />
+                              {cancelReasonError && (
+                                <p className="text-xs text-red-600 font-medium">{cancelReasonError}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2 pt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setCancelDialogOpen(false)}
+                              disabled={cancelLoading}
+                            >
+                              Keep Order
+                            </Button>
+                            <Button
+                              type="button"
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                              onClick={handleCancelOrder}
+                              disabled={cancelLoading || !cancelReason.trim()}
+                            >
+                              {cancelLoading ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Cancelling...
+                                </>
+                              ) : (
+                                "Yes, Cancel Order"
+                              )}
+                            </Button>
+                          </div>
                         </DialogContent>
                       </Dialog>
                       {/* Edit Delivery Order Dialog */}

@@ -1343,6 +1343,7 @@ function transformSalesOrder(backendOrder: any): SalesOrder {
     paymentStatus: backendOrder.paymentStatus ?? "",
     deliveryAddress: backendOrder.Customer?.address ?? "",
     poNumber: backendOrder.poNumber ?? "",
+    cancelReason: backendOrder.cancelReason ?? "",
     createdAt: backendOrder.createdAt,
     createdUserName: backendOrder.createdUserName,
     updatedAt: backendOrder.updatedAt,
@@ -2159,6 +2160,14 @@ export const deliveryOrdersApi = {
     });
   },
 
+  // Cancel delivery order (Approved only)
+  async cancel(id: number | string, data: { cancelReason: string }) {
+    return await apiRequest(`/delivery-orders/${id}/cancel`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
   // Get approved delivery orders by driver
   async getApprovedByDriver(driverId: number | string) {
     return await apiRequest(`/delivery-orders/approved/driver/${driverId}`);
@@ -2553,6 +2562,7 @@ export interface SalesOrder {
   subTotal: number
   totalAmount: number
   status: string
+  cancelReason?: string
   paymentStatus?: string
   deliveryAddress?: string
   poNumber?: string

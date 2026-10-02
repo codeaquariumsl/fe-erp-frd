@@ -1992,6 +1992,7 @@ export default function SalesPage() {
                   <SelectItem className="text-xs" value="Delivered">DO Delivered</SelectItem>
                   <SelectItem className="text-xs" value="Finalized">DO Finalized</SelectItem>
                   <SelectItem className="text-xs" value="Failed">DO Failed</SelectItem>
+                  <SelectItem className="text-xs" value="Cancelled">DO Cancelled</SelectItem>
                 </SelectContent>
               </Select>
               {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchRouteId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
@@ -2181,6 +2182,12 @@ export default function SalesPage() {
                   </div>
                   {viewOrder.poNumber && <div><b>PO Number:</b> {viewOrder.poNumber}</div>}
                   <div><b>Status:</b> {getStatusBadge(viewOrder.status)}</div>
+                  {viewOrder.status === "Cancelled" && viewOrder.cancelReason && (
+                    <div className="col-span-3 bg-red-50 p-3 rounded-lg border border-red-200">
+                      <div className="text-xs font-semibold text-red-800">Cancellation Reason:</div>
+                      <div className="text-sm text-red-700 mt-1">{viewOrder.cancelReason}</div>
+                    </div>
+                  )}
                   {viewOrder.SalesPerson && (
                     <div className="bg-amber-50 p-3 rounded col-span-3">
                       <b className="block mb-2">Sales Person Details</b>
