@@ -14,11 +14,18 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { CalendarIcon, Plus, Edit, Trash2, FileText, CheckCircle, XCircle, Eye, Printer, Search, Filter, X, Package, ChevronsUpDown, Check } from "lucide-react"
+import { CalendarIcon, Plus, Edit, Trash2, FileText, CheckCircle, XCircle, Eye, Printer, Search, Filter, X, Package, ChevronsUpDown, Check, FileSpreadsheet, FileDown, Loader2, ChevronDown } from "lucide-react"
 import { format, addDays } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import jsPDF from "jspdf"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { generateInvoiceListExcel } from "@/lib/excel-generator"
 import {
     invoicesApi,
     customersApi,
@@ -88,6 +95,7 @@ export default function InvoicesPage() {
     const [dateFromFilter, setDateFromFilter] = useState<string>("")
     const [dateToFilter, setDateToFilter] = useState<string>("")
     const [customerFilterOpen, setCustomerFilterOpen] = useState(false)
+    const [exporting, setExporting] = useState(false)
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1)
@@ -202,6 +210,109 @@ export default function InvoicesPage() {
         setDateFromFilter("")
         setDateToFilter("")
         setCurrentPage(1)
+    }
+
+    const handleExportExcel = async (scope: "all" | "current" = "all") => {
+        try {
+            setExporting(true)
+
+            const selectedCustomer = customers.find(c => c.id.toString() === customerFilter)
+            const selectedSalesPerson = salesPersons.find(sp => sp.id.toString() === salesPersonFilter)
+
+            const filterSummary = {
+                search: searchTerm || undefined,
+                status: statusFilter !== "all" ? statusFilter : undefined,
+                paymentStatus: paymentStatusFilter !== "all" ? paymentStatusFilter : undefined,
+                customerName: selectedCustomer ? selectedCustomer.name : undefined,
+                salesPersonName: selectedSalesPerson ? (selectedSalesPerson.fullName || selectedSalesPerson.username) : undefined,
+                dateFrom: dateFromFilter || undefined,
+                dateTo: dateToFilter || undefined,
+            }
+
+            let invoicesToExport: Invoice[] = []
+
+            if (scope === "current") {
+                if (invoices.length === 0) {
+                    toast({
+                        title: "No data to export",
+                        description: "The current page has no invoices to export.",
+                        variant: "destructive",
+                    })
+                    return
+                }
+                invoicesToExport = invoices
+            } else {
+                // Fetch first page with 500 limit
+                const firstResult = await invoicesApi.getAll({
+                    page: 1,
+                    limit: 500,
+                    search: searchTerm || undefined,
+                    status: statusFilter !== "all" ? statusFilter : undefined,
+                    paymentStatus: paymentStatusFilter !== "all" ? paymentStatusFilter : undefined,
+                    customerId: customerFilter !== "all" ? customerFilter : undefined,
+                    salesPersonId: salesPersonFilter !== "all" ? salesPersonFilter : undefined,
+                    dateFrom: dateFromFilter || undefined,
+                    dateTo: dateToFilter || undefined,
+                })
+
+                let allRows = [...(firstResult.data || [])]
+                const totalPagesCount = firstResult.pagination?.totalPages || 1
+
+                if (totalPagesCount > 1) {
+                    const remainingPagePromises = []
+                    for (let p = 2; p <= totalPagesCount; p++) {
+                        remainingPagePromises.push(
+                            invoicesApi.getAll({
+                                page: p,
+                                limit: 500,
+                                search: searchTerm || undefined,
+                                status: statusFilter !== "all" ? statusFilter : undefined,
+                                paymentStatus: paymentStatusFilter !== "all" ? paymentStatusFilter : undefined,
+                                customerId: customerFilter !== "all" ? customerFilter : undefined,
+                                salesPersonId: salesPersonFilter !== "all" ? salesPersonFilter : undefined,
+                                dateFrom: dateFromFilter || undefined,
+                                dateTo: dateToFilter || undefined,
+                            })
+                        )
+                    }
+                    const additionalResults = await Promise.all(remainingPagePromises)
+                    additionalResults.forEach(res => {
+                        if (res?.data) {
+                            allRows = allRows.concat(res.data)
+                        }
+                    })
+                }
+
+                if (allRows.length === 0) {
+                    toast({
+                        title: "No data to export",
+                        description: "No invoices match the current filter criteria.",
+                        variant: "destructive",
+                    })
+                    return
+                }
+                invoicesToExport = allRows
+            }
+
+            generateInvoiceListExcel(invoicesToExport, {
+                filterSummary,
+                scope: scope === "current" ? `Current Page (${currentPage})` : "All Filtered Invoices"
+            })
+
+            toast({
+                title: "Excel Export Generated",
+                description: `Successfully exported ${invoicesToExport.length} invoice${invoicesToExport.length === 1 ? '' : 's'} with items detail.`,
+            })
+        } catch (error: any) {
+            console.error("Failed to export invoices to Excel:", error)
+            toast({
+                title: "Export failed",
+                description: error?.message || "Could not generate Excel export.",
+                variant: "destructive",
+            })
+        } finally {
+            setExporting(false)
+        }
     }
 
     // Status Filter Component
@@ -357,12 +468,25 @@ export default function InvoicesPage() {
                 <span>
                     Showing {startIndex}-{endIndex} of {totalInvoices} invoices
                 </span>
-                {(searchTerm || statusFilter !== "all" || paymentStatusFilter !== "all" || customerFilter !== "all" || salesPersonFilter !== "all" || dateFromFilter || dateToFilter) && (
-                    <span className="flex items-center">
-                        <Filter className="mr-1 h-3 w-3" />
-                        Filters active
-                    </span>
-                )}
+                <div className="flex items-center gap-3">
+                    {(searchTerm || statusFilter !== "all" || paymentStatusFilter !== "all" || customerFilter !== "all" || salesPersonFilter !== "all" || dateFromFilter || dateToFilter) && (
+                        <span className="flex items-center">
+                            <Filter className="mr-1 h-3 w-3" />
+                            Filters active
+                        </span>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleExportExcel("all")}
+                        disabled={exporting || totalInvoices === 0}
+                        className="h-6 px-2 text-xs text-green-700 hover:text-green-800 hover:bg-green-50"
+                        title="Export all matching invoices to Excel"
+                    >
+                        <FileSpreadsheet className="mr-1 h-3.5 w-3.5 text-green-600" />
+                        Export ({totalInvoices})
+                    </Button>
+                </div>
             </div>
         )
     }
@@ -1040,7 +1164,54 @@ export default function InvoicesPage() {
                         <h1 className="text-3xl font-bold">Invoices</h1>
                         <p className="text-gray-600">Manage customer invoices</p>
                     </div>
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <div className="flex items-center space-x-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    disabled={exporting || (totalInvoices === 0 && invoices.length === 0)}
+                                    className="border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800"
+                                >
+                                    {exporting ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" />
+                                    )}
+                                    {exporting ? "Exporting..." : "Export Excel"}
+                                    <ChevronDown className="ml-1.5 h-3.5 w-3.5 opacity-70" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuItem
+                                    onClick={() => handleExportExcel("all")}
+                                    disabled={exporting || totalInvoices === 0}
+                                    className="cursor-pointer"
+                                >
+                                    <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                                    <div>
+                                        <div className="font-medium">All Matching Invoices</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {totalInvoices} invoice{totalInvoices === 1 ? '' : 's'}
+                                        </div>
+                                    </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => handleExportExcel("current")}
+                                    disabled={exporting || invoices.length === 0}
+                                    className="cursor-pointer"
+                                >
+                                    <FileSpreadsheet className="mr-2 h-4 w-4 text-blue-600" />
+                                    <div>
+                                        <div className="font-medium">Current Page Only</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {invoices.length} invoice{invoices.length === 1 ? '' : 's'} (Page {currentPage})
+                                        </div>
+                                    </div>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             {/* <Button
                                 onClick={() => {
@@ -1274,6 +1445,7 @@ export default function InvoicesPage() {
                             </form>
                         </DialogContent>
                     </Dialog>
+                    </div>
                 </div>
 
                 {/* View Invoice Dialog */}

@@ -1045,3 +1045,320 @@ export const generateCustomerOutstandingReportExcel = (data: {
     XLSX.writeFile(wb, `Customer_Outstanding_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`);
 };
 
+export const generateInvoiceListExcel = (
+    invoices: any[],
+    options?: {
+        filterSummary?: {
+            search?: string;
+            status?: string;
+            paymentStatus?: string;
+            customerName?: string;
+            salesPersonName?: string;
+            dateFrom?: string;
+            dateTo?: string;
+        };
+        scope?: string;
+    }
+) => {
+    const wb = XLSX.utils.book_new();
+
+    const getPaymentStatusText = (inv: any) => {
+        if (inv.status === "Cancelled") return "Cancelled";
+        const total = Number(inv.totalAmount ?? inv.total ?? 0);
+        const settled = Number(inv.paidAmount ?? 0) + Number(inv.setoffAmount ?? 0);
+        const due = total - settled;
+        if (total > 0 && due <= 0.01) return "Paid";
+        if (settled > 0.01) return "Partially Paid";
+        return "Unpaid";
+    };
+
+    const filterParts: string[] = [];
+    if (options?.filterSummary?.search) filterParts.push(`Search: "${options.filterSummary.search}"`);
+    if (options?.filterSummary?.status && options.filterSummary.status !== "all") filterParts.push(`Status: ${options.filterSummary.status}`);
+    if (options?.filterSummary?.paymentStatus && options.filterSummary.paymentStatus !== "all") filterParts.push(`Payment: ${options.filterSummary.paymentStatus}`);
+    if (options?.filterSummary?.customerName) filterParts.push(`Customer: ${options.filterSummary.customerName}`);
+    if (options?.filterSummary?.salesPersonName) filterParts.push(`Sales Person: ${options.filterSummary.salesPersonName}`);
+    if (options?.filterSummary?.dateFrom) filterParts.push(`From: ${options.filterSummary.dateFrom}`);
+    if (options?.filterSummary?.dateTo) filterParts.push(`To: ${options.filterSummary.dateTo}`);
+
+    // Sheet 1: Invoices Summary
+    const summaryData: any[][] = [
+        ['INVOICE LIST REPORT'],
+        ['Generated Date:', format(new Date(), 'yyyy-MM-dd HH:mm:ss')],
+        ['Export Scope:', options?.scope || 'All Filtered Invoices'],
+        ['Total Invoices:', invoices.length],
+        ...(filterParts.length > 0 ? [['Active Filters:', filterParts.join(' | ')]] : []),
+        [],
+        [
+            'Invoice #',
+            'Type',
+            'Date',
+            'Customer Name',
+            'Contact',
+            'Order Type',
+            'Sales Order #',
+            'Delivery Order #',
+            'Sales Person',
+            'Subtotal (LKR)',
+            'Tax Amount (LKR)',
+            'Total Amount (LKR)',
+            'Paid Amount (LKR)',
+            'Setoff Amount (LKR)',
+            'Balance Due (LKR)',
+            'Payment Status',
+            'DO Status',
+            'Invoice Status',
+            'Cancellation Reason',
+        ]
+    ];
+
+    let totalSubtotal = 0;
+    let totalTax = 0;
+    let totalAmount = 0;
+    let totalPaid = 0;
+    let totalSetoff = 0;
+    let totalBalanceDue = 0;
+
+    invoices.forEach((inv) => {
+        const subtotal = Number(inv.subTotal ?? 0);
+        const taxAmount = Number(inv.taxAmount ?? 0);
+        const invTotal = Number(inv.totalAmount ?? inv.total ?? 0);
+        const paid = Number(inv.paidAmount ?? 0);
+        const setoff = Number(inv.setoffAmount ?? 0);
+        const balanceDue = Math.max(0, invTotal - (paid + setoff));
+
+        totalSubtotal += subtotal;
+        totalTax += taxAmount;
+        totalAmount += invTotal;
+        totalPaid += paid;
+        totalSetoff += setoff;
+        totalBalanceDue += balanceDue;
+
+        const dateStr = inv.invoiceDate
+            ? (typeof inv.invoiceDate === 'string' ? inv.invoiceDate.substring(0, 10) : format(new Date(inv.invoiceDate), 'yyyy-MM-dd'))
+            : '-';
+
+        const customerName = inv.customer?.name || inv.Customer?.name || '-';
+        const contact = inv.customer?.contactNumber || inv.Customer?.contactNumber || '-';
+        const isDelivery = inv.SalesOrder?.isDelivery ? 'Delivery' : 'Pickup';
+        const soNumber = inv.SalesOrder?.orderNumber || (inv.salesOrderId ? String(inv.salesOrderId) : '-');
+        const doNumber = inv.DeliveryOrder?.doNumber || (inv.deliveryOrderId ? String(inv.deliveryOrderId) : '-');
+        const salesPerson = inv.SalesPerson?.fullName || inv.SalesPerson?.username || '-';
+        const doStatus = inv.DeliveryOrder?.status || 'Pending';
+        const status = inv.status || 'Pending';
+
+        summaryData.push([
+            inv.invoiceNumber || '-',
+            inv.isTaxInvoice ? 'Tax Invoice' : 'Regular',
+            dateStr,
+            customerName,
+            contact,
+            isDelivery,
+            soNumber,
+            doNumber,
+            salesPerson,
+            subtotal,
+            taxAmount,
+            invTotal,
+            paid,
+            setoff,
+            balanceDue,
+            getPaymentStatusText(inv),
+            doStatus,
+            status,
+            inv.cancelReason || '-'
+        ]);
+    });
+
+    summaryData.push([]);
+    summaryData.push([
+        'Grand Total',
+        '',
+        '',
+        `Invoices Count: ${invoices.length}`,
+        '',
+        '',
+        '',
+        '',
+        '',
+        Number(totalSubtotal.toFixed(2)),
+        Number(totalTax.toFixed(2)),
+        Number(totalAmount.toFixed(2)),
+        Number(totalPaid.toFixed(2)),
+        Number(totalSetoff.toFixed(2)),
+        Number(totalBalanceDue.toFixed(2)),
+        '',
+        '',
+        '',
+        ''
+    ]);
+
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    wsSummary['!cols'] = [
+        { wch: 18 }, // Invoice #
+        { wch: 15 }, // Type
+        { wch: 14 }, // Date
+        { wch: 32 }, // Customer Name
+        { wch: 16 }, // Contact
+        { wch: 14 }, // Order Type
+        { wch: 18 }, // Sales Order #
+        { wch: 18 }, // Delivery Order #
+        { wch: 22 }, // Sales Person
+        { wch: 16 }, // Subtotal
+        { wch: 16 }, // Tax Amount
+        { wch: 18 }, // Total Amount
+        { wch: 16 }, // Paid Amount
+        { wch: 16 }, // Setoff Amount
+        { wch: 16 }, // Balance Due
+        { wch: 16 }, // Payment Status
+        { wch: 14 }, // DO Status
+        { wch: 14 }, // Invoice Status
+        { wch: 25 }, // Cancellation Reason
+    ];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Invoices Summary');
+
+    // Sheet 2: Invoice Items Detail
+    const itemsData: any[][] = [
+        ['INVOICE ITEMS DETAIL'],
+        ['Generated Date:', format(new Date(), 'yyyy-MM-dd HH:mm:ss')],
+        [],
+        [
+            'Invoice #',
+            'Date',
+            'Customer Name',
+            'Invoice Status',
+            'Payment Status',
+            'Item Code',
+            'Item Name',
+            'Unit',
+            'Quantity',
+            'Free Qty',
+            'Unit Price (LKR)',
+            'Discount %',
+            'Discounted Amount (LKR)',
+            'Tax Item?',
+            'Tax Amount (LKR)',
+            'Line Total (LKR)'
+        ]
+    ];
+
+    let totalItemQty = 0;
+    let totalFreeQty = 0;
+    let totalItemLineTotal = 0;
+
+    invoices.forEach((inv) => {
+        const dateStr = inv.invoiceDate
+            ? (typeof inv.invoiceDate === 'string' ? inv.invoiceDate.substring(0, 10) : format(new Date(inv.invoiceDate), 'yyyy-MM-dd'))
+            : '-';
+        const customerName = inv.customer?.name || inv.Customer?.name || '-';
+        const invStatus = inv.status || 'Pending';
+        const payStatus = getPaymentStatusText(inv);
+
+        const itemsList = inv.items || inv.InvoiceItems || [];
+
+        if (Array.isArray(itemsList) && itemsList.length > 0) {
+            itemsList.forEach((it: any) => {
+                const qty = Number(it.qty ?? 0);
+                const freeQty = Number(it.freeQty ?? it.freeIssueQty ?? 0);
+                const price = Number(it.price ?? 0);
+                const discount = Number(it.discount ?? 0);
+                const discountedAmount = Number(it.discountedAmount ?? (price * (1 - discount / 100)));
+                const taxAmount = Number(it.taxAmount ?? 0);
+                const lineTotal = Number(it.total ?? (qty * discountedAmount));
+
+                totalItemQty += qty;
+                totalFreeQty += freeQty;
+                totalItemLineTotal += lineTotal;
+
+                itemsData.push([
+                    inv.invoiceNumber || '-',
+                    dateStr,
+                    customerName,
+                    invStatus,
+                    payStatus,
+                    it.code || it.item?.barcode || it.item?.sku || it.Item?.barcode || it.Item?.sku || '-',
+                    it.item?.name || it.Item?.name || it.itemName || '-',
+                    it.item?.unit || it.Item?.unit || '-',
+                    qty,
+                    freeQty,
+                    price,
+                    discount,
+                    Number(discountedAmount.toFixed(2)),
+                    it.isTaxItem ? 'Yes' : 'No',
+                    taxAmount,
+                    Number(lineTotal.toFixed(2))
+                ]);
+            });
+        } else {
+            itemsData.push([
+                inv.invoiceNumber || '-',
+                dateStr,
+                customerName,
+                invStatus,
+                payStatus,
+                '-',
+                'No line items',
+                '-',
+                0,
+                0,
+                0,
+                0,
+                0,
+                '-',
+                0,
+                0
+            ]);
+        }
+    });
+
+    itemsData.push([]);
+    itemsData.push([
+        'Grand Total',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        Number(totalItemQty.toFixed(2)),
+        Number(totalFreeQty.toFixed(2)),
+        '',
+        '',
+        '',
+        '',
+        '',
+        Number(totalItemLineTotal.toFixed(2))
+    ]);
+
+    const wsItems = XLSX.utils.aoa_to_sheet(itemsData);
+    wsItems['!cols'] = [
+        { wch: 18 }, // Invoice #
+        { wch: 14 }, // Date
+        { wch: 30 }, // Customer Name
+        { wch: 14 }, // Invoice Status
+        { wch: 16 }, // Payment Status
+        { wch: 16 }, // Item Code
+        { wch: 36 }, // Item Name
+        { wch: 10 }, // Unit
+        { wch: 12 }, // Quantity
+        { wch: 12 }, // Free Qty
+        { wch: 16 }, // Unit Price
+        { wch: 12 }, // Discount %
+        { wch: 22 }, // Discounted Amount
+        { wch: 12 }, // Tax Item?
+        { wch: 16 }, // Tax Amount
+        { wch: 18 }, // Line Total
+    ];
+    XLSX.utils.book_append_sheet(wb, wsItems, 'Item Details');
+
+    const filterTag = [
+        options?.filterSummary?.status && options.filterSummary.status !== 'all' ? options.filterSummary.status : null,
+        options?.filterSummary?.paymentStatus && options.filterSummary.paymentStatus !== 'all' ? options.filterSummary.paymentStatus : null,
+    ].filter(Boolean).join('_');
+
+    const fileName = `Invoices_${filterTag ? filterTag + '_' : ''}${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+};
+
+
