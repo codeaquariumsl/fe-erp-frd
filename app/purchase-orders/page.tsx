@@ -379,9 +379,7 @@ export default function PurchaseOrdersPage() {
     doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     doc.setTextColor(80, 80, 80)
-    doc.text("No. 65,", margin, yPos)
-    yPos += 4
-    doc.text("1st Lane, Meda Welikada,", margin, yPos)
+    doc.text("No. 65, 1st Lane, Meda Welikada,", margin, yPos)
     yPos += 4
     doc.text("Rajagiriya", margin, yPos)
     yPos += 4
