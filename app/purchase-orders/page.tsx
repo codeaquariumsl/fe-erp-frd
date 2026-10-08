@@ -368,18 +368,6 @@ export default function PurchaseOrdersPage() {
     doc.setFont("helvetica", "bold")
     rightText(`# ${order.orderNumber || "-"}`, yPos)
 
-    yPos += 12
-    doc.setFontSize(10)
-    doc.setFont("helvetica", "normal")
-    doc.setTextColor(100, 100, 100)
-    rightText("Balance Due", yPos)
-
-    yPos += 6
-    doc.setFontSize(14)
-    doc.setFont("helvetica", "bold")
-    doc.setTextColor(0, 0, 0)
-    rightText(`LKR${dueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos)
-
     // Company Details (Left)
     yPos = 50
     doc.setTextColor(0, 0, 0)
@@ -562,17 +550,6 @@ export default function PurchaseOrdersPage() {
     rightText(`LKR${totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, totalValueX)
     yPos += 5
 
-    // Balance Due Box
-    doc.setFillColor(240, 240, 240)
-    doc.rect(pageWidth - margin - 90, yPos, 90, 10, "F")
-
-    yPos += 6.5
-    doc.setFontSize(10)
-    doc.text("Balance Due", totalLabelX, yPos, { align: "right" })
-    rightText(`LKR${dueAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, totalValueX)
-
-    yPos += 15
-
     // 6. Notes & Bank Details
     if (yPos > pageHeight - 65) {
       doc.addPage()
@@ -588,29 +565,13 @@ export default function PurchaseOrdersPage() {
     let notesY = bottomSectionY + 6
     doc.setFont("helvetica", "normal")
     doc.setTextColor(80, 80, 80)
-    doc.text("- Prices are fixed and inclusive of all applicable charges unless agreed otherwise in writing.", margin, notesY)
+    doc.text("- Prices are fixed and inclusive of all applicable charges unless agreed otherwise in writing by both parties.", margin, notesY)
     notesY += 6
     doc.text("- The Supplier must deliver goods within the agreed timeline and inform CCPL in advance of any delays.", margin, notesY)
     notesY += 6
     doc.text("- All goods must align with agreed specifications, finalized samples, and quality standards.", margin, notesY)
     notesY += 6
     doc.text("- Payments will be made as per the agreed terms in the purchase order and/or invoice.", margin, notesY)
-
-    notesY += 8
-    doc.setFont("helvetica", "bold")
-    doc.setTextColor(0, 0, 0)
-    doc.text("Bank Details", margin, notesY)
-
-    notesY += 6
-    doc.setFont("helvetica", "normal")
-    doc.setTextColor(80, 80, 80)
-    doc.text("Account Name : Ceylon Carb Private Limited", margin, notesY)
-    notesY += 5
-    doc.text("Bank : National Development Bank (NDB)", margin, notesY)
-    notesY += 5
-    doc.text("Bank Branch : Kohuwela", margin, notesY)
-    notesY += 5
-    doc.text("Account Number : 111000305711", margin, notesY)
 
     // Footer line
     doc.setDrawColor(220, 220, 220)
