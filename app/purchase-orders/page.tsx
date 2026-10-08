@@ -385,9 +385,7 @@ export default function PurchaseOrdersPage() {
     yPos += 4
     doc.text("Rajagiriya", margin, yPos)
     yPos += 4
-    doc.text("SriLanka", margin, yPos)
-    yPos += 4
-    doc.text("0744118869", margin, yPos)
+    doc.text("+94 71 4902255", margin, yPos)
     yPos += 4
     doc.text("office@ceyloncarb.com", margin, yPos)
 
