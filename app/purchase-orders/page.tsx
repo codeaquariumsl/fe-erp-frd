@@ -39,7 +39,6 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
 import { format } from "date-fns"
 import { ERPLayout } from "@/components/layouts/erp-layout"
 import Loading from "./loading"
@@ -310,187 +309,320 @@ export default function PurchaseOrdersPage() {
   }
 
   const handlePrintPO = (order: PurchaseOrder) => {
+    if (!order) return
     const doc = new jsPDF()
     const pageWidth = doc.internal.pageSize.width
     const pageHeight = doc.internal.pageSize.height
+    const margin = 15
 
-    // Add Logo Text (Instead of image)
-    doc.setFontSize(24)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(10, 115, 10) // Green
-    doc.text('CEYLON CARB', 15, 20)
-
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(100, 100, 100)
-    doc.text('INSPIRED BY EXCELLENCE', 15, 25)
-
-    // Purchase Order title
-    doc.setFontSize(24)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(0, 0, 0)
-    doc.text('PURCHASE ORDER', pageWidth - 15, 20, { align: 'right' })
-
-    // PO Number
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text(`# ${order.orderNumber}`, pageWidth - 15, 27, { align: 'right' })
-
-    // Company Address
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Ceylon Carb (Private) Limited', 15, 40)
-
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    doc.text('No. 358, 3rd Floor, Jana Jaya City,', 15, 45)
-    doc.text('Jinadasa Niyathapala Mawatha, Sri Jayawardenapura, Kotte.', 15, 50)
-    doc.text('+94 71 4902255', 15, 55)
-    doc.text('office@ceyloncarb.com', 15, 60)
-    doc.text('www.ceyloncarb.com', 15, 65)
-
-    // Supplier Address & Deliver To
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Supplier Address', pageWidth / 2 + 10, 40)
-
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.text(order.supplier?.name || '-', pageWidth / 2 + 10, 45)
-    doc.setFont('helvetica', 'normal')
-
-    const supplierAddressParts = (order.supplier?.address || '').split(',')
-    let currentY = 50
-    if (supplierAddressParts.length > 0 && supplierAddressParts[0] !== '') {
-      supplierAddressParts.forEach(part => {
-        doc.text(part.trim(), pageWidth / 2 + 10, currentY)
-        currentY += 5
-      })
-    } else {
-      doc.text('Address not provided', pageWidth / 2 + 10, currentY)
+    // Helper: Right align text
+    const rightText = (text: string, y: number, x: number = pageWidth - margin, options: any = {}) => {
+      doc.text(text, x, y, { align: "right", ...options })
     }
 
-    doc.setFontSize(10)
-    doc.text('Deliver To', pageWidth / 2 + 10, 75)
-    doc.setFontSize(9)
-    doc.text('office', pageWidth / 2 + 10, 80)
-    doc.text('No. 358, 3rd Floor, Jana Jaya City,', pageWidth / 2 + 10, 85)
-    doc.text('Jinadasa Niyathapala Mawatha,', pageWidth / 2 + 10, 90)
-    doc.text('Sri Jayawardenapura, Kotte.', pageWidth / 2 + 10, 95)
-    doc.text('+94 71 4902255', pageWidth / 2 + 10, 100)
-    doc.text('office@ceyloncarb.com', pageWidth / 2 + 10, 105)
-    doc.text('www.ceyloncarb.com', pageWidth / 2 + 10, 110)
-
-    // Dates aligned right above table
-    const tableStartY = 130
-
-    doc.text('Date :', pageWidth - 50, tableStartY - 15, { align: 'right' })
-    doc.text('Delivery Date :', pageWidth - 50, tableStartY - 8, { align: 'right' })
-
-    doc.text(format(new Date(order.orderDate), 'dd MMM yyyy'), pageWidth - 15, tableStartY - 15, { align: 'right' })
-    doc.text(order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yyyy') : 'TBD', pageWidth - 15, tableStartY - 8, { align: 'right' })
-
-    // Prepare table data
-    const tableBody: any[] = []
-    let totalQty = 0
-    let totalAmount = 0
-
+    // Calculations
+    let calculatedTotal = 0
     if (order.items && order.items.length > 0) {
-      order.items.forEach((item, index) => {
-        const selectedItem = items.find(i => i.id === item.itemId)
-        const itemName = selectedItem ? `${selectedItem.name}` : `Item ${item.itemId}`
-
-        tableBody.push([
-          (index + 1).toString(),
-          itemName,
-          (item.quantity || 0).toFixed(2),
-          (item.unitPrice || 0).toFixed(2),
-          ((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        ])
-
-        totalQty += item.quantity || 0
-        totalAmount += (item.quantity || 0) * (item.unitPrice || 0)
+      order.items.forEach((item) => {
+        const qty = Number(item.quantity || 0)
+        const price = Number(item.unitPrice || 0)
+        const amount = Number(item.totalPrice) || (qty * price)
+        calculatedTotal += amount
       })
     }
+    const totalAmount = calculatedTotal > 0 ? calculatedTotal : Number(order.totalAmount || 0)
+    const subtotal = totalAmount
+    const dueAmount = totalAmount
 
-    autoTable(doc, {
-      startY: tableStartY,
-      head: [['#', 'Item & Description', 'Qty', 'Rate', 'Amount (LKR)']],
-      body: tableBody,
-      theme: 'grid',
-      headStyles: {
-        fillColor: [50, 50, 50],
-        textColor: 255,
-        fontStyle: 'normal',
-        halign: 'left'
-      },
-      columnStyles: {
-        0: { cellWidth: 15, halign: 'center' },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 25, halign: 'right' },
-        3: { cellWidth: 30, halign: 'right' },
-        4: { cellWidth: 35, halign: 'right' }
-      },
-      styles: {
-        fontSize: 9,
-        lineColor: [200, 200, 200],
-        lineWidth: 0.1
-      },
-      alternateRowStyles: {
-        fillColor: [255, 255, 255]
-      },
-      margin: { left: 15, right: 15 }
-    })
+    let yPos = 20
 
-    // Sub Total & Total
-    const finalY = (doc as any).lastAutoTable.finalY + 10
-
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Sub Total', pageWidth - 50, finalY, { align: 'right' })
-    doc.text(totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), pageWidth - 15, finalY, { align: 'right' })
-
-    doc.line(15, finalY + 5, pageWidth - 15, finalY + 5)
-
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Total', pageWidth - 50, finalY + 15, { align: 'right' })
-    doc.text(`LKR ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 15, finalY + 15, { align: 'right' })
-
-    // Terms & Conditions
-    let termsY = finalY + 40
-    if (termsY > pageHeight - 40) {
-      doc.addPage()
-      termsY = 20
+    // 1. Header Section
+    // Logo
+    try {
+      // Using the logo from the public assets folder
+      doc.setFillColor(253, 203, 88) // Yellowish circle
+      doc.circle(margin + 15, yPos + 5, 15, "F")
+      doc.addImage("/assets/fruit_easy_logo.png", "PNG", margin, yPos - 10, 30, 30)
+    } catch (e) {
+      console.error("Failed to add logo to PDF:", e)
+      doc.setFillColor(253, 203, 88) // Yellowish circle
+      doc.circle(margin + 15, yPos + 5, 15, "F")
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(16)
+      doc.setFont("helvetica", "bold")
+      doc.text("fe", margin + 10, yPos + 2)
+      doc.setFontSize(8)
+      doc.text("FRUIT", margin + 8, yPos + 6)
+      doc.text("eazy", margin + 9, yPos + 10)
     }
 
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Terms & Conditions', 15, termsY)
+    // Right Header
+    const title = "Purchase Order"
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(26)
+    doc.setTextColor(0, 0, 0)
+    rightText(title, yPos)
+
+    yPos += 8
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "bold")
+    rightText(`# ${order.orderNumber || "-"}`, yPos)
+
+    yPos += 12
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(100, 100, 100)
+    rightText("Balance Due", yPos)
+
+    yPos += 6
+    doc.setFontSize(14)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(0, 0, 0)
+    rightText(`LKR${dueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos)
+
+    // Company Details (Left)
+    yPos = 50
+    doc.setTextColor(0, 0, 0)
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "bold")
+    doc.text("Fruit Eazy", margin, yPos)
+
+    yPos += 5
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(80, 80, 80)
+    doc.text("No. 65,", margin, yPos)
+    yPos += 4
+    doc.text("1st Lane, Meda Welikada,", margin, yPos)
+    yPos += 4
+    doc.text("Rajagiriya", margin, yPos)
+    yPos += 4
+    doc.text("SriLanka", margin, yPos)
+    yPos += 4
+    doc.text("0744118869", margin, yPos)
+    yPos += 4
+    doc.text("office@ceyloncarb.com", margin, yPos)
+
+    yPos += 10
+
+    // 2. Vendor & Info Section
+    const billToY = yPos
+    const supplier = order.supplier || suppliers.find((s) => s.id === Number(order.supplierId))
+
+    // Vendor / Supplier
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(0, 0, 0)
+    doc.text("Vendor", margin, yPos)
+
+    let leftY = yPos + 5
+    if (supplier) {
+      doc.setFontSize(9)
+      doc.setFont("helvetica", "bold")
+      doc.text(supplier.name || "-", margin, leftY)
+      leftY += 5
+
+      doc.setFont("helvetica", "normal")
+      if (supplier.address) {
+        const addressLines = doc.splitTextToSize(supplier.address, 80)
+        doc.text(addressLines, margin, leftY)
+        leftY += addressLines.length * 5
+      }
+
+      if (supplier.phone) {
+        doc.text(supplier.phone, margin, leftY)
+        leftY += 5
+      }
+
+      if (supplier.email) {
+        doc.text(supplier.email, margin, leftY)
+        leftY += 5
+      }
+    } else {
+      doc.setFontSize(9)
+      doc.setFont("helvetica", "normal")
+      doc.text("-", margin, leftY)
+      leftY += 5
+    }
+
+    // Info Details (Right)
+    let rightY = billToY
+    const labelX = pageWidth - margin - 40
+    const valueX = pageWidth - margin
 
     doc.setFontSize(9)
-    doc.setTextColor(50, 50, 50)
-    const terms = [
-      '- Prices are fixed and inclusive of all applicable charges unless agreed otherwise in writing by both parties.',
-      '- The Supplier must deliver goods within the agreed timeline and inform CCPL in advance of any delays.',
-      '- All goods must align with agreed specifications, finalized samples, and quality standards.',
-      '- Payments will be made as per the agreed terms in the purchase order and/or invoice.'
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(80, 80, 80)
+
+    const poDate = order.orderDate ? format(new Date(order.orderDate), "dd MMM yyyy") : "-"
+    const deliveryDate = order.deliveryDate ? format(new Date(order.deliveryDate), "dd MMM yyyy") : "TBD"
+    const status = order.status || "Pending"
+    const supplierTin = (supplier as any)?.taxNumber || (supplier as any)?.tin || "108199873 - 7000"
+
+    doc.text("PO Date :", labelX, rightY, { align: "right" })
+    rightText(poDate, rightY, valueX)
+
+    rightY += 6
+    doc.text("Delivery Date :", labelX, rightY, { align: "right" })
+    rightText(deliveryDate, rightY, valueX)
+
+    rightY += 6
+    doc.text("Status :", labelX, rightY, { align: "right" })
+    rightText(status, rightY, valueX)
+
+    rightY += 6
+    doc.text("Supplier TIN :", labelX, rightY, { align: "right" })
+    rightText(supplierTin, rightY, valueX)
+
+    yPos = Math.max(leftY, rightY) + 8
+
+    // 3. Table Header
+    doc.setFillColor(60, 60, 60)
+    doc.rect(margin, yPos, pageWidth - (margin * 2), 8, "F")
+
+    const cols = [
+      { label: "#", x: margin + 5, align: "center" },
+      { label: "Item & Description", x: margin + 15, align: "left" },
+      { label: "Qty", x: pageWidth - margin - 50, align: "right" },
+      { label: "Rate", x: pageWidth - margin - 25, align: "right" },
+      { label: "Amount", x: pageWidth - margin - 5, align: "right" },
     ]
 
-    termsY += 7
-    terms.forEach(term => {
-      doc.text(term, 15, termsY)
-      termsY += 5
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(255, 255, 255)
+
+    cols.forEach((c) => {
+      doc.text(c.label, c.x, yPos + 5, { align: c.align as "left" | "right" | "center" })
     })
 
-    // Footer signature
-    // doc.setFontSize(10)
-    // doc.setTextColor(150, 150, 150)
-    // doc.text('POWERED BY CODE AQUA ERP', 15, pageHeight - 15)
+    yPos += 12
+    doc.setTextColor(0, 0, 0)
+
+    // 4. Table Rows
+    if (order.items && order.items.length > 0) {
+      order.items.forEach((item, index) => {
+        const selectedItem = item.item || items.find((i) => i.id === item.itemId)
+        const itemName = selectedItem ? selectedItem.name : `Item ${item.itemId}`
+        const unit = selectedItem?.unit ? ` ${selectedItem.unit}` : " pcs"
+        const qty = Number(item.quantity || 0)
+        const price = Number(item.unitPrice || 0)
+        const amount = Number(item.totalPrice) || (qty * price)
+
+        doc.setFontSize(9)
+        doc.setFont("helvetica", "normal")
+
+        // Index
+        doc.text((index + 1).toString(), cols[0].x, yPos, { align: "center" })
+
+        // Item description
+        const itemLines = doc.splitTextToSize(itemName, 90)
+        doc.text(itemLines[0], cols[1].x, yPos)
+
+        // Qty
+        doc.text(qty.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + unit, cols[2].x, yPos, { align: "right" })
+
+        // Rate and Amount
+        doc.setFontSize(9)
+        doc.setTextColor(0, 0, 0)
+        doc.text(Number(price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cols[3].x, yPos, { align: "right" })
+        doc.text(Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cols[4].x, yPos, { align: "right" })
+
+        yPos += 2
+
+        // Light gray line
+        doc.setDrawColor(220, 220, 220)
+        doc.line(margin, yPos, pageWidth - margin, yPos)
+        yPos += 4
+
+        if (yPos > pageHeight - 60) {
+          doc.addPage()
+          yPos = 20
+        }
+      })
+    }
+
+    // 5. Totals Section
+    yPos += 5
+    const totalLabelX = pageWidth - margin - 40
+    const totalValueX = pageWidth - margin
+
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(0, 0, 0)
+
+    // Sub Total
+    doc.text("Sub Total", totalLabelX, yPos, { align: "right" })
+    rightText(subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), yPos, totalValueX)
+    yPos += 8
+
+    // Total
+    doc.setFont("helvetica", "bold")
+    doc.text("Total", totalLabelX, yPos, { align: "right" })
+    rightText(`LKR${totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, totalValueX)
+    yPos += 5
+
+    // Balance Due Box
+    doc.setFillColor(240, 240, 240)
+    doc.rect(pageWidth - margin - 90, yPos, 90, 10, "F")
+
+    yPos += 6.5
+    doc.setFontSize(10)
+    doc.text("Balance Due", totalLabelX, yPos, { align: "right" })
+    rightText(`LKR${dueAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, yPos, totalValueX)
+
+    yPos += 15
+
+    // 6. Notes & Bank Details
+    if (yPos > pageHeight - 65) {
+      doc.addPage()
+      yPos = 20
+    }
+
+    const bottomSectionY = yPos
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(0, 0, 0)
+    doc.text("Terms & Conditions", margin, bottomSectionY)
+
+    let notesY = bottomSectionY + 6
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(80, 80, 80)
+    doc.text("- Prices are fixed and inclusive of all applicable charges unless agreed otherwise in writing.", margin, notesY)
+    notesY += 6
+    doc.text("- The Supplier must deliver goods within the agreed timeline and inform CCPL in advance of any delays.", margin, notesY)
+    notesY += 6
+    doc.text("- All goods must align with agreed specifications, finalized samples, and quality standards.", margin, notesY)
+    notesY += 6
+    doc.text("- Payments will be made as per the agreed terms in the purchase order and/or invoice.", margin, notesY)
+
+    notesY += 8
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(0, 0, 0)
+    doc.text("Bank Details", margin, notesY)
+
+    notesY += 6
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(80, 80, 80)
+    doc.text("Account Name : Ceylon Carb Private Limited", margin, notesY)
+    notesY += 5
+    doc.text("Bank : National Development Bank (NDB)", margin, notesY)
+    notesY += 5
+    doc.text("Bank Branch : Kohuwela", margin, notesY)
+    notesY += 5
+    doc.text("Account Number : 111000305711", margin, notesY)
+
+    // Footer line
+    doc.setDrawColor(220, 220, 220)
+    doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15)
 
     // Save the PDF
-    const fileName = `PO_${order.orderNumber}_${format(new Date(), 'yyyyMMdd')}.pdf`
+    const fileName = `PurchaseOrder-${order.orderNumber || "Draft"}.pdf`
     doc.save(fileName)
+    toast({
+      title: "Success",
+      description: "Purchase Order PDF generated successfully."
+    })
   }
 
   const handleEditOrder = (order: PurchaseOrder) => {
