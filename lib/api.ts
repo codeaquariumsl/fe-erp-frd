@@ -2592,6 +2592,10 @@ export const salesOrdersApi = {
     isTaxInvoice?: string   // "ALL" | "TAX" | "REGULAR"
     status?: string         // "ALL" | "Pending" | "Approved" | "Rejected" | "Cancelled"
     deliveryOrderStatus?: string // "ALL" | "Pending" | "Approved" | "Scheduled" | "Dispatched" | "In Transit" | "Delivered" | "Finalized" | "Failed" | "No DO"
+    startDate?: string
+    endDate?: string
+    orderStartDate?: string
+    orderEndDate?: string
   }): Promise<PaginatedResponse<SalesOrder>> {
     const qp = new URLSearchParams()
     if (params?.page) qp.append("page", params.page.toString())
@@ -2606,6 +2610,10 @@ export const salesOrdersApi = {
       qp.append("status", params.status)
     if (params?.deliveryOrderStatus && params.deliveryOrderStatus !== "ALL")
       qp.append("deliveryOrderStatus", params.deliveryOrderStatus)
+    if (params?.startDate) qp.append("startDate", params.startDate)
+    if (params?.endDate) qp.append("endDate", params.endDate)
+    if (params?.orderStartDate) qp.append("orderStartDate", params.orderStartDate)
+    if (params?.orderEndDate) qp.append("orderEndDate", params.orderEndDate)
 
     const url = `/sales-orders${qp.toString() ? `?${qp.toString()}` : ""}`
     const response = await apiRequest<{ data: any[]; pagination: PaginationMeta, summary: any }>(url)

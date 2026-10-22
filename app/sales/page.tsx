@@ -27,8 +27,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Plus, Search, MoreHorizontal, ShoppingCart, TrendingUp, Clock, CheckCircle, Eye, Edit, Trash2, CircleDot, Send, Truck, CheckCircle2, Package, AlertTriangle, HourglassIcon, ChevronsUpDown, Check, X, FileDown, Loader2 } from "lucide-react"
+import { Plus, Search, MoreHorizontal, ShoppingCart, TrendingUp, Clock, CheckCircle, Eye, Edit, Trash2, CircleDot, Send, Truck, CheckCircle2, Package, AlertTriangle, HourglassIcon, ChevronsUpDown, Check, X, FileDown, Loader2, CalendarIcon } from "lucide-react"
 import { CustomerSelect } from "@/components/customer/customer-select"
 import { format } from "date-fns"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -87,6 +88,52 @@ export default function SalesPage() {
   const [searchIsTaxInvoice, setSearchIsTaxInvoice] = useState("ALL")
   const [searchStatus, setSearchStatus] = useState("ALL")
   const [searchDeliveryOrderStatus, setSearchDeliveryOrderStatus] = useState("ALL")
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined)
+  const [datePreset, setDatePreset] = useState("ALL")
+
+  const handleDatePresetChange = (preset: string) => {
+    setDatePreset(preset)
+    setCurrentPage(1)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    if (preset === "TODAY") {
+      setStartDate(today)
+      setEndDate(today)
+    } else if (preset === "YESTERDAY") {
+      const yesterday = new Date(today)
+      yesterday.setDate(today.getDate() - 1)
+      setStartDate(yesterday)
+      setEndDate(yesterday)
+    } else if (preset === "THIS_WEEK") {
+      const day = today.getDay()
+      const diffToMon = day === 0 ? -6 : 1 - day
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(today.getDate() + diffToMon)
+      setStartDate(startOfWeek)
+      setEndDate(today)
+    } else if (preset === "THIS_MONTH") {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      setStartDate(startOfMonth)
+      setEndDate(today)
+    } else if (preset === "ALL") {
+      setStartDate(undefined)
+      setEndDate(undefined)
+    }
+  }
+
+  const handleStartDateChange = (d?: Date) => {
+    setStartDate(d)
+    setDatePreset(d ? "CUSTOM" : (endDate ? "CUSTOM" : "ALL"))
+    setCurrentPage(1)
+  }
+
+  const handleEndDateChange = (d?: Date) => {
+    setEndDate(d)
+    setDatePreset(d ? "CUSTOM" : (startDate ? "CUSTOM" : "ALL"))
+    setCurrentPage(1)
+  }
   const [routes, setRoutes] = useState<Route[]>([])
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([])   // current page rows
   const [totalOrders, setTotalOrders] = useState(0)                   // server total count
@@ -164,6 +211,8 @@ export default function SalesPage() {
         isTaxInvoice: searchIsTaxInvoice !== "ALL" ? searchIsTaxInvoice : undefined,
         status: searchStatus !== "ALL" ? searchStatus : undefined,
         deliveryOrderStatus: searchDeliveryOrderStatus !== "ALL" ? searchDeliveryOrderStatus : undefined,
+        startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+        endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
       })
       setSalesOrders(result.data)
       setTotalOrders(result.pagination.total)
@@ -188,7 +237,7 @@ export default function SalesPage() {
 
   useEffect(() => {
     fetchOrders()
-  }, [currentPage, itemsPerPage, searchTerm, searchCustomerId, searchSalesPersonId, searchRouteId, searchIsTaxInvoice, searchStatus, searchDeliveryOrderStatus])
+  }, [currentPage, itemsPerPage, searchTerm, searchCustomerId, searchSalesPersonId, searchRouteId, searchIsTaxInvoice, searchStatus, searchDeliveryOrderStatus, startDate, endDate])
 
   // Fetch routes list for filter
   useEffect(() => {
@@ -495,6 +544,19 @@ export default function SalesPage() {
     return validDates
   }
 
+  const isFilterActive = Boolean(
+    searchTerm ||
+    searchCustomerId !== "ALL" ||
+    searchSalesPersonId !== "ALL" ||
+    searchRouteId !== "ALL" ||
+    searchIsTaxInvoice !== "ALL" ||
+    searchStatus !== "ALL" ||
+    searchDeliveryOrderStatus !== "ALL" ||
+    startDate ||
+    endDate ||
+    datePreset !== "ALL"
+  )
+
   const clearFilters = () => {
     setSearchTerm("")
     setSearchCustomerId("ALL")
@@ -503,6 +565,9 @@ export default function SalesPage() {
     setSearchIsTaxInvoice("ALL")
     setSearchStatus("ALL")
     setSearchDeliveryOrderStatus("ALL")
+    setDatePreset("ALL")
+    setStartDate(undefined)
+    setEndDate(undefined)
     setCurrentPage(1)
   }
 
@@ -527,7 +592,7 @@ export default function SalesPage() {
         <span>
           Showing {startIndex}-{endIndex} of {totalOrders} orders
         </span>
-        {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchRouteId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
+        {isFilterActive && (
           <span className="flex items-center">
             <Search className="mr-1 h-3 w-3" />
             Filters active
@@ -1071,9 +1136,8 @@ export default function SalesPage() {
   const exportSalesOrdersExcel = async () => {
     try {
       setExporting(true)
-      // Fetch all filtered rows (no pagination — large limit)
+      // Fetch all filtered rows (no limit)
       const result = await salesOrdersApi.getAll({
-        limit: 500,
         search: searchTerm || undefined,
         customerId: searchCustomerId !== "ALL" ? searchCustomerId : undefined,
         salesPersonId: searchSalesPersonId !== "ALL" ? searchSalesPersonId : undefined,
@@ -1081,6 +1145,8 @@ export default function SalesPage() {
         isTaxInvoice: searchIsTaxInvoice !== "ALL" ? searchIsTaxInvoice : undefined,
         status: searchStatus !== "ALL" ? searchStatus : undefined,
         deliveryOrderStatus: searchDeliveryOrderStatus !== "ALL" ? searchDeliveryOrderStatus : undefined,
+        startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+        endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
       })
       const orders = result.data
 
@@ -1094,12 +1160,21 @@ export default function SalesPage() {
         "Order #", "Invoice Type", "Customer", "Route", "Type", "Delivery?",
         "Order Date", "Delivery Date", "Dispatch Date",
         "Sales Person", "PO Number",
+        "Total Items", "Total Qty",
         "Sub Total (LKR)", "Tax Amount (LKR)", "Total Amount (LKR)",
         "SO Status", "DO Status",
       ]
       const summaryRows: any[][] = [summaryHeader]
       orders.forEach((o) => {
         const routeName = o.Route?.routeName || routes.find(r => String(r.id) === String(o.routeId))?.routeName || ""
+        const items = (o.items as any[]) || []
+        const totalItemsCount = items.length
+        const totalOrderQty = items.reduce((sum: number, it: any) => {
+          const bQty = Number(it.qty ?? 0)
+          const fQty = Number(it.freeIssueQty ?? calculateFreeIssueQty(it, bQty))
+          return sum + bQty + fQty
+        }, 0)
+
         summaryRows.push([
           o.orderNumber,
           o.isTaxInvoice ? "Tax Invoice" : "Regular",
@@ -1112,6 +1187,8 @@ export default function SalesPage() {
           o.dispatchDate ? o.dispatchDate.substring(0, 10) : "",
           o.SalesPerson?.fullName || "",
           o.poNumber || "",
+          totalItemsCount,
+          totalOrderQty,
           Number(o.subTotal ?? 0),
           Number(o.taxAmount ?? 0),
           Number(o.totalAmount ?? 0),
@@ -1124,6 +1201,7 @@ export default function SalesPage() {
         { wch: 16 }, { wch: 13 }, { wch: 30 }, { wch: 20 }, { wch: 14 }, { wch: 10 },
         { wch: 13 }, { wch: 13 }, { wch: 13 },
         { wch: 20 }, { wch: 14 },
+        { wch: 12 }, { wch: 12 },
         { wch: 17 }, { wch: 17 }, { wch: 17 },
         { wch: 12 }, { wch: 14 },
       ]
@@ -1132,7 +1210,7 @@ export default function SalesPage() {
       // ── Sheet 2: Item Details ────────────────────────────────────────────
       const itemHeader = [
         "Order #", "Customer", "Order Date", "SO Status", "DO Status",
-        "Item Name", "Code", "Qty", "Free Qty", "Unit Price (LKR)",
+        "Item Name", "Code", "Unit", "Qty", "Free Qty", "Total Qty", "Unit Price (LKR)",
         "Discount %", "Tax Item?",
         "Line Total (LKR)",
       ]
@@ -1140,20 +1218,29 @@ export default function SalesPage() {
       orders.forEach((o) => {
         if (o.items && (o.items as any[]).length > 0) {
           (o.items as any[]).forEach((item: any) => {
+            const itemName = item.item?.name || item.Item?.name || item.itemName || item.name || ""
+            const itemCode = item.code || item.item?.barcode || item.Item?.sku || ""
+            const itemUnit = item.item?.unit || item.Item?.unit || item.unit || ""
+            const billedQty = Number(item.qty ?? 0)
+            const freeQty = Number(item.freeIssueQty ?? calculateFreeIssueQty(item, billedQty))
+            const totalQty = billedQty + freeQty
+
             itemRows.push([
               o.orderNumber,
               o.customerName || "",
               o.orderDate ? o.orderDate.substring(0, 10) : "",
               o.status || "",
               o.deliveryOrderStatus || "No DO",
-              item.itemName || item.name || "",
-              item.code || "",
-              Number(item.qty ?? 0),
-              Number(item.freeIssueQty ?? calculateFreeIssueQty(item, item.qty ?? 0)),
+              itemName,
+              itemCode,
+              itemUnit,
+              billedQty,
+              freeQty,
+              totalQty,
               Number(item.price ?? 0),
               Number(item.discount ?? 0),
               item.isTaxItem ? "Yes" : "No",
-              Number(item.total ?? ((item.qty ?? 0) * (item.price ?? 0))),
+              Number(item.total ?? (billedQty * (item.price ?? 0))),
             ])
           })
         } else {
@@ -1161,17 +1248,135 @@ export default function SalesPage() {
             o.orderNumber, o.customerName || "",
             o.orderDate ? o.orderDate.substring(0, 10) : "",
             o.status || "", o.deliveryOrderStatus || "No DO",
-            "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "",
           ])
         }
       })
       const wsItems = XLSX.utils.aoa_to_sheet(itemRows)
       wsItems["!cols"] = [
         { wch: 16 }, { wch: 30 }, { wch: 13 }, { wch: 12 }, { wch: 14 },
-        { wch: 30 }, { wch: 12 }, { wch: 8 }, { wch: 16 },
+        { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 },
         { wch: 11 }, { wch: 10 }, { wch: 16 },
       ]
       XLSX.utils.book_append_sheet(wb, wsItems, "Item Details")
+
+      // ── Sheet 3: Item Total Qty Summary ──────────────────────────────────
+      const itemSummaryMap = new Map<string, {
+        itemCode: string
+        itemName: string
+        unit: string
+        totalBilledQty: number
+        totalFreeQty: number
+        totalCombinedQty: number
+        ordersCount: number
+        orderNumbers: Set<string>
+        totalAmount: number
+      }>()
+
+      orders.forEach((o) => {
+        if (o.items && Array.isArray(o.items)) {
+          o.items.forEach((item: any) => {
+            const itemId = item.itemId ?? item.item?.id ?? item.Item?.id ?? item.code ?? item.name
+            const key = String(itemId || item.itemName || item.item?.name || "Unknown")
+            const itemName = item.item?.name || item.Item?.name || item.itemName || item.name || "Unknown Item"
+            const itemCode = item.code || item.item?.barcode || item.Item?.sku || item.item?.code || "-"
+            const unit = item.item?.unit || item.Item?.unit || item.unit || ""
+            const billedQty = Number(item.qty ?? 0)
+            const freeQty = Number(item.freeIssueQty ?? calculateFreeIssueQty(item, billedQty))
+            const lineTotal = Number(item.total ?? (billedQty * Number(item.price ?? 0)))
+
+            if (!itemSummaryMap.has(key)) {
+              itemSummaryMap.set(key, {
+                itemCode,
+                itemName,
+                unit,
+                totalBilledQty: 0,
+                totalFreeQty: 0,
+                totalCombinedQty: 0,
+                ordersCount: 0,
+                orderNumbers: new Set<string>(),
+                totalAmount: 0,
+              })
+            }
+
+            const record = itemSummaryMap.get(key)!
+            record.totalBilledQty += billedQty
+            record.totalFreeQty += freeQty
+            record.totalCombinedQty += (billedQty + freeQty)
+            record.totalAmount += lineTotal
+            if (o.orderNumber) {
+              record.orderNumbers.add(o.orderNumber)
+            }
+          })
+        }
+      })
+
+      const sheet3Header = [
+        "Item Code",
+        "Item Name",
+        "Unit",
+        "Total Billed Qty",
+        "Total Free Qty",
+        "Total Qty",
+        "Orders Count",
+        "Total Amount (LKR)",
+      ]
+      const sheet3Rows: any[][] = [sheet3Header]
+
+      let grandBilledQty = 0
+      let grandFreeQty = 0
+      let grandTotalQty = 0
+      let grandTotalAmount = 0
+
+      // Sort items by name alphabetically
+      const sortedItemSummary = Array.from(itemSummaryMap.values()).sort((a, b) =>
+        a.itemName.localeCompare(b.itemName)
+      )
+
+      sortedItemSummary.forEach((rec) => {
+        grandBilledQty += rec.totalBilledQty
+        grandFreeQty += rec.totalFreeQty
+        grandTotalQty += rec.totalCombinedQty
+        grandTotalAmount += rec.totalAmount
+
+        sheet3Rows.push([
+          rec.itemCode,
+          rec.itemName,
+          rec.unit,
+          rec.totalBilledQty,
+          rec.totalFreeQty,
+          rec.totalCombinedQty,
+          rec.orderNumbers.size,
+          Number(rec.totalAmount.toFixed(2)),
+        ])
+      })
+
+      // Summary row at the bottom
+      if (sortedItemSummary.length > 0) {
+        sheet3Rows.push([
+          "TOTAL",
+          `${sortedItemSummary.length} Unique Items`,
+          "",
+          grandBilledQty,
+          grandFreeQty,
+          grandTotalQty,
+          orders.length,
+          Number(grandTotalAmount.toFixed(2)),
+        ])
+      }
+
+      const wsItemSummary = XLSX.utils.aoa_to_sheet(sheet3Rows)
+      wsItemSummary["!cols"] = [
+        { wch: 16 }, // Item Code
+        { wch: 35 }, // Item Name
+        { wch: 10 }, // Unit
+        { wch: 16 }, // Total Billed Qty
+        { wch: 16 }, // Total Free Qty
+        { wch: 14 }, // Total Qty
+        { wch: 14 }, // Orders Count
+        { wch: 18 }, // Total Amount (LKR)
+      ]
+      XLSX.utils.book_append_sheet(wb, wsItemSummary, "Item Total Qty Summary")
 
       const activeFilters = [
         searchStatus !== "ALL" ? searchStatus : null,
@@ -1995,7 +2200,104 @@ export default function SalesPage() {
                   <SelectItem className="text-xs" value="Cancelled">DO Cancelled</SelectItem>
                 </SelectContent>
               </Select>
-              {(searchTerm || searchCustomerId !== "ALL" || searchSalesPersonId !== "ALL" || searchRouteId !== "ALL" || searchIsTaxInvoice !== "ALL" || searchStatus !== "ALL" || searchDeliveryOrderStatus !== "ALL") && (
+
+              {/* Order Date Quick Preset */}
+              <Select
+                value={datePreset}
+                onValueChange={handleDatePresetChange}
+              >
+                <SelectTrigger className="h-8 text-xs w-[125px]">
+                  <SelectValue placeholder="Date Range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem className="text-xs" value="ALL">All Dates</SelectItem>
+                  <SelectItem className="text-xs" value="TODAY">Today</SelectItem>
+                  <SelectItem className="text-xs" value="YESTERDAY">Yesterday</SelectItem>
+                  <SelectItem className="text-xs" value="THIS_WEEK">This Week</SelectItem>
+                  <SelectItem className="text-xs" value="THIS_MONTH">This Month</SelectItem>
+                  {datePreset === "CUSTOM" && (
+                    <SelectItem className="text-xs" value="CUSTOM">Custom Range</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+
+              {/* Order Date From */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 justify-start text-left font-normal text-xs min-w-[130px] gap-1.5",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                    <span>{startDate ? format(startDate, "dd/MM/yyyy") : "Order From"}</span>
+                    {startDate && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="ml-auto rounded-full p-0.5 hover:bg-slate-200 text-slate-500 hover:text-slate-700"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStartDateChange(undefined)
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={handleStartDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {/* Order Date To */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 justify-start text-left font-normal text-xs min-w-[130px] gap-1.5",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                    <span>{endDate ? format(endDate, "dd/MM/yyyy") : "Order To"}</span>
+                    {endDate && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="ml-auto rounded-full p-0.5 hover:bg-slate-200 text-slate-500 hover:text-slate-700"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEndDateChange(undefined)
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={handleEndDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {isFilterActive && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -2074,7 +2376,16 @@ export default function SalesPage() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="py-2">{order.createdAt ? format(new Date(order.createdAt), "PPP p") : "-"}</TableCell>
+                          <TableCell className="py-2">
+                            <div>
+                              <div className="font-medium">{order.orderDate ? formatDate(order.orderDate) : formatDate(order.createdAt || "")}</div>
+                              {order.createdAt && (
+                                <div className="text-[10px] text-muted-foreground">
+                                  Created: {format(new Date(order.createdAt), "dd/MM/yy p")}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="py-2">{formatDate(order.deliveryDate || "")}</TableCell>
                           <TableCell className="py-2">
                             <div>
