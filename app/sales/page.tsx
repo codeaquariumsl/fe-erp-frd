@@ -737,14 +737,8 @@ export default function SalesPage() {
     }
     // Validate each item
     for (const item of newOrder.items) {
-      if (!item.itemId || !item.qty) {
+      if (!item.itemId || !item.qty || item.qty < 1) {
         setError("Please fill all required fields in Order Items.")
-        return
-      }
-      // Validate stock availability
-      const selectedItem = availableItems.find(ai => ai.item.id === item.itemId)
-      if (selectedItem && item.qty > selectedItem.availability.totalAvailableQuantity) {
-        setError(`Insufficient stock for ${selectedItem.item.name}. Available: ${selectedItem.availability.totalAvailableQuantity}`)
         return
       }
     }
@@ -1788,27 +1782,24 @@ export default function SalesPage() {
                                       <Input
                                         type="number"
                                         min={1}
-                                        max={selectedItem?.availability?.totalAvailableQuantity || 0}
                                         placeholder="Qty"
                                         value={item.qty}
                                         onChange={(e) => {
                                           const newQty = Number(e.target.value)
-                                          const maxAvailable = selectedItem?.availability?.totalAvailableQuantity || 0
 
-                                          // Only update if within available range
-                                          if (newQty >= 1 && newQty <= maxAvailable) {
+                                          if (newQty >= 1) {
                                             const updatedItems = [...newOrder.items]
                                             updatedItems[index].qty = newQty
                                             setNewOrder({ ...newOrder, items: updatedItems })
                                           }
                                         }}
-                                        className={`h-8 w-24 ${item.qty > (selectedItem?.availability?.totalAvailableQuantity || 0) ? 'border-red-500 focus:border-red-500' : ''}`}
+                                        className={`h-8 w-24 ${selectedItem && item.qty > (selectedItem?.availability?.totalAvailableQuantity || 0) ? 'border-amber-500 focus:border-amber-500' : ''}`}
                                       />
                                       {unit && <span className="text-xs text-muted-foreground font-medium">{unit}</span>}
                                     </div>
                                     {selectedItem && item.qty > (selectedItem?.availability?.totalAvailableQuantity || 0) && (
-                                      <p className="text-xs text-red-500">
-                                        Max: {selectedItem.availability?.totalAvailableQuantity || 0}
+                                      <p className="text-xs text-amber-600 font-medium">
+                                        Insufficient stock (Available: {selectedItem.availability?.totalAvailableQuantity || 0})
                                       </p>
                                     )}
                                   </div>
@@ -1931,6 +1922,46 @@ export default function SalesPage() {
                           Select a customer to add items
                         </p>
                       )}
+                      {(() => {
+                        const insufficientItems = newOrder.items
+                          .map((item) => {
+                            const selectedItem = availableItems.find(ai => ai.item.id === item.itemId)
+                            const availableQty = selectedItem?.availability?.totalAvailableQuantity || 0
+                            if (selectedItem && item.qty > availableQty) {
+                              return {
+                                name: selectedItem.item.name,
+                                code: selectedItem.customerItemCode?.code || selectedItem.item.sku || '',
+                                requested: item.qty,
+                                available: availableQty,
+                                unit: selectedItem.item.unit || ''
+                              }
+                            }
+                            return null
+                          })
+                          .filter(Boolean) as { name: string; code: string; requested: number; available: number; unit: string }[]
+
+                        if (insufficientItems.length === 0) return null
+
+                        return (
+                          <div className="bg-amber-50 border border-amber-200 text-amber-900 p-3 rounded-md flex items-start gap-3 mt-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div className="flex-1 text-xs">
+                              <p className="font-semibold text-amber-800">Insufficient Stock Warning</p>
+                              <p className="text-[11px] text-amber-700 mt-0.5">
+                                The following items exceed available stock, but you can still create the sales order:
+                              </p>
+                              <ul className="list-disc list-inside mt-1 space-y-0.5 text-[11px]">
+                                {insufficientItems.map((it, idx) => (
+                                  <li key={idx}>
+                                    <span className="font-medium">{it.name}</span>
+                                    {it.code ? ` (${it.code})` : ''}: Requested <span className="font-semibold">{it.requested} {it.unit}</span>, Available <span className="font-semibold">{it.available} {it.unit}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
 
