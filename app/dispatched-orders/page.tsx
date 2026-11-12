@@ -49,6 +49,7 @@ interface SummaryItem {
     itemId: number
     batchId: number
     qty: number
+    freeQty?: number
     canFulfillFromBay: boolean
     delivery: Delivery
     DeliveryOrder: {
@@ -73,6 +74,7 @@ interface SummaryItem {
     mergeInfo?: {
         originalItemsCount: number
         mergedQty: number
+        mergedFreeQty?: number
         summaryItemIds: number[]
         deliveryOrdersCount: number
     }
@@ -282,6 +284,10 @@ export default function DispatchedOrdersPage() {
     }
 
     const filteredSummaries = summaryData?.summaries || []
+    const selectedSummaryItems = selectedSummary?.SummaryItems || []
+    const totalSummaryBilledQty = selectedSummaryItems.reduce((sum, item) => sum + Number(item.qty || 0), 0)
+    const totalSummaryFreeQty = selectedSummaryItems.reduce((sum, item) => sum + Number(item.freeQty || 0), 0)
+    const totalSummaryOverallQty = totalSummaryBilledQty + totalSummaryFreeQty
 
     const stats = {
         total: summaryData?.summary?.total || 0,
@@ -754,62 +760,103 @@ export default function DispatchedOrdersPage() {
                         <DialogHeader>
                             <DialogTitle>Order Summary Details - {selectedSummary?.code}</DialogTitle>
                         </DialogHeader>
-                        <div className="mt-2">
-                            {/* Add delivery information section */}
-                            {selectedSummary?.SummaryItems[0]?.delivery && (
-                                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <p className="text-sm text-gray-500">Dispatch Date</p>
-                                            <p className="font-medium">
-                                                {selectedSummary.SummaryItems[0].delivery.dispatchDate ? format(new Date(selectedSummary.SummaryItems[0].delivery.dispatchDate), 'dd/MM/yyyy') : '-'}
-                                            </p>
+                        <div className="mt-2 space-y-4">
+                            {/* Summary Header */}
+                            {selectedSummary && (
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                    <div>
+                                        <div className="text-lg font-semibold text-blue-800">
+                                            Summary Code: <span className="font-mono">{selectedSummary.code}</span>
                                         </div>
-                                        <div>
-                                            <p className="text-sm text-gray-500">Delivery Date</p>
-                                            <p className="font-medium">
-                                                {selectedSummary.SummaryItems[0].delivery.deliveryDate ? format(new Date(selectedSummary.SummaryItems[0].delivery.deliveryDate), 'dd/MM/yyyy') : '-'}
-                                            </p>
+                                        <div className="text-sm text-gray-600">
+                                            Total Items: <span className="font-mono">{selectedSummaryItems.length}</span> | Billed Qty: <span className="font-mono">{totalSummaryBilledQty}</span> | Free Qty: <span className="font-mono text-purple-700 font-bold">{totalSummaryFreeQty}</span> | Overall Total: <span className="font-mono font-bold text-blue-700">{totalSummaryOverallQty}</span>
                                         </div>
                                     </div>
+                                    {selectedSummary.SummaryItems?.[0]?.delivery && (
+                                        <div className="flex gap-6 text-sm">
+                                            <div>
+                                                <p className="text-xs text-gray-500">Dispatch Date</p>
+                                                <p className="font-medium text-gray-900">
+                                                    {selectedSummary.SummaryItems[0].delivery.dispatchDate ? format(new Date(selectedSummary.SummaryItems[0].delivery.dispatchDate), 'dd/MM/yyyy') : '-'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Delivery Date</p>
+                                                <p className="font-medium text-gray-900">
+                                                    {selectedSummary.SummaryItems[0].delivery.deliveryDate ? format(new Date(selectedSummary.SummaryItems[0].delivery.deliveryDate), 'dd/MM/yyyy') : '-'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
-                            <Table className="text-xs">
-                                <TableHeader className="bg-slate-100 dark:bg-slate-800">
-                                    <TableRow>
-                                        {/* <TableHead className="font-semibold">DO Number</TableHead> */}
-                                        <TableHead className="font-semibold">Item</TableHead>
-                                        <TableHead className="font-semibold">Quantity</TableHead>
-                                        <TableHead className="font-semibold">Batch</TableHead>
-                                        <TableHead className="font-semibold">Store</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {selectedSummary?.SummaryItems.map((item) => (
-                                        <TableRow key={item.id}>
-                                            {/* <TableCell className="py-2">{item.DeliveryOrder.doNumber}</TableCell> */}
-                                            <TableCell className="py-2">
-                                                <div>
-                                                    <div>{item.Item.name}</div>
-                                                    <div className="text-muted-foreground">
-                                                        {item.Item.barcode}
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-2">
-                                                <div className="flex items-center gap-1">
-                                                    {!selectedSummary?.isDispatched && <span>{scannedQuantities[item.id] || 0}</span>}
-                                                    {!selectedSummary?.isDispatched && <span className="text-muted-foreground">/</span>}
-                                                    <span>{item.qty} {item.Item.unit || ""}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-2">{item.Batch?.batchNumber}</TableCell>
-                                            <TableCell className="py-2">{item.ReleaseStore?.name}</TableCell>
+                            <div className="border rounded-lg">
+                                <Table className="text-xs">
+                                    <TableHeader>
+                                        <TableRow className="bg-gray-50 dark:bg-slate-800">
+                                            <TableHead className="font-semibold">#</TableHead>
+                                            <TableHead className="font-semibold">Item Name</TableHead>
+                                            <TableHead className="font-semibold">Billed Qty</TableHead>
+                                            <TableHead className="font-semibold">Free Qty</TableHead>
+                                            <TableHead className="font-semibold">Total Qty</TableHead>
+                                            <TableHead className="font-semibold">Batch</TableHead>
+                                            <TableHead className="font-semibold">Store</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {selectedSummaryItems.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                                                    No items found in this summary.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            selectedSummaryItems.map((item, idx) => {
+                                                const billedQty = Number(item.qty || 0)
+                                                const freeQty = Number(item.freeQty || 0)
+                                                const totalQty = billedQty + freeQty
+                                                const unit = item.Item?.unit || ""
+
+                                                return (
+                                                    <TableRow key={item.id} className="hover:bg-gray-50">
+                                                        <TableCell className="py-2 text-xs text-gray-500">{idx + 1}</TableCell>
+                                                        <TableCell className="py-2">
+                                                            <div>
+                                                                <div className="font-medium">{item.Item?.name}</div>
+                                                                <div className="text-muted-foreground">
+                                                                    {item.Item?.barcode}
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <div className="flex items-center gap-1">
+                                                                {!selectedSummary?.isDispatched && (
+                                                                    <>
+                                                                        <span>{scannedQuantities[item.id] || 0}</span>
+                                                                        <span className="text-muted-foreground">/</span>
+                                                                    </>
+                                                                )}
+                                                                <span className="font-semibold text-blue-700">
+                                                                    {billedQty}{unit ? ` ${unit}` : ""}
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 font-semibold text-purple-700">
+                                                            {freeQty > 0 ? `+${freeQty}${unit ? ` ${unit}` : ""}` : "0"}
+                                                        </TableCell>
+                                                        <TableCell className="py-2 font-bold text-gray-900">
+                                                            {totalQty}{unit ? ` ${unit}` : ""}
+                                                        </TableCell>
+                                                        <TableCell className="py-2">{item.Batch?.batchNumber}</TableCell>
+                                                        <TableCell className="py-2">{item.ReleaseStore?.name}</TableCell>
+                                                    </TableRow>
+                                                )
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </div>
                         <DialogFooter>
                             {!selectedSummary?.isDispatched && (
@@ -886,6 +933,12 @@ export default function DispatchedOrdersPage() {
                                             <p className="text-sm text-muted-foreground">Scanned Qty</p>
                                             <p className="font-semibold">{scannedQuantities[scannedItem.id] || 0} {scannedItem.Item.unit}</p>
                                         </div>
+                                        {Number(scannedItem.freeQty || 0) > 0 && (
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">Free Qty</p>
+                                                <p className="font-semibold text-purple-700">+{scannedItem.freeQty} {scannedItem.Item.unit}</p>
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <p className="text-sm text-muted-foreground">Batch Number</p>
