@@ -2,7 +2,7 @@
 
 import * as XLSX from "xlsx"
 
-import { useEffect, useState, useMemo } from "react"
+import { Fragment, useEffect, useState, useMemo, useRef } from "react"
 // Customer filter state for sales orders
 import { salesOrdersApi, SalesOrder, SalesOrderItem, customersApi, Customer, timeSlotsApi, itemsApi, locationsApi, Location, usersApi, User, accountingReportsApi, routesApi, Route } from "@/lib/api"
 
@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Plus, Search, MoreHorizontal, ShoppingCart, TrendingUp, Clock, CheckCircle, Eye, Edit, Trash2, CircleDot, Send, Truck, CheckCircle2, Package, AlertTriangle, HourglassIcon, ChevronsUpDown, Check, X, FileDown, Loader2, CalendarIcon } from "lucide-react"
+import { Plus, Search, MoreHorizontal, ShoppingCart, TrendingUp, Clock, CheckCircle, Eye, Edit, Trash2, CircleDot, Send, Truck, CheckCircle2, Package, AlertTriangle, HourglassIcon, ChevronsUpDown, Check, X, FileDown, Loader2, CalendarIcon, Users, List, ChevronDown, ChevronRight } from "lucide-react"
 import { CustomerSelect } from "@/components/customer/customer-select"
 import { format } from "date-fns"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -78,6 +78,75 @@ const calculateFreeIssueQty = (itemObj: any, qty: number): number => {
   const freeQty = Number(item.freeIssueCount) || 0
   if (triggerQty <= 0 || freeQty <= 0 || qty < triggerQty) return 0
   return Math.floor(qty / triggerQty) * freeQty
+}
+
+interface CustomerOrderGroup {
+  key: string
+  customerId: number
+  customerName: string
+  customerType: string
+  contactNumber: string
+  orderCount: number
+  pendingCount: number
+  approvedCount: number
+  rejectedCount: number
+  cancelledCount: number
+  deliveredCount: number
+  totalAmount: number
+  latestOrderDate: string
+  orders: SalesOrder[]
+}
+
+const groupOrdersByCustomer = (orders: SalesOrder[]): CustomerOrderGroup[] => {
+  const map = new Map<string, CustomerOrderGroup>()
+
+  orders.forEach((order) => {
+    const customerId = Number(order.customerId || 0)
+    const customerName = order.customerName?.trim() || `Customer #${customerId || "Unknown"}`
+    const key = customerId > 0 ? `id_${customerId}` : `name_${customerName.toLowerCase()}`
+
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        customerId,
+        customerName,
+        customerType: order.customerType || "",
+        contactNumber: order.contactNumber || "",
+        orderCount: 0,
+        pendingCount: 0,
+        approvedCount: 0,
+        rejectedCount: 0,
+        cancelledCount: 0,
+        deliveredCount: 0,
+        totalAmount: 0,
+        latestOrderDate: "",
+        orders: [],
+      })
+    }
+
+    const group = map.get(key)!
+    group.orderCount += 1
+    group.totalAmount += Number(order.totalAmount ?? 0)
+    group.orders.push(order)
+
+    if (order.status === "Pending") group.pendingCount += 1
+    else if (order.status === "Approved") group.approvedCount += 1
+    else if (order.status === "Rejected") group.rejectedCount += 1
+    else if (order.status === "Cancelled") group.cancelledCount += 1
+
+    if (order.deliveryOrderStatus === "Delivered") {
+      group.deliveredCount += 1
+    }
+
+    const dateVal = order.orderDate || order.createdAt || ""
+    const dateMs = dateVal ? new Date(dateVal).getTime() || 0 : 0
+    const currentLatestMs = group.latestOrderDate ? new Date(group.latestOrderDate).getTime() || 0 : 0
+    if (dateVal && dateMs >= currentLatestMs) {
+      group.latestOrderDate = dateVal
+    }
+  })
+
+  return Array.from(map.values())
 }
 
 export default function SalesPage() {
@@ -161,6 +230,15 @@ export default function SalesPage() {
   // Time slots for delivery scheduling
   const [timeSlots, setTimeSlots] = useState<any[]>([])
 
+  // View mode and customer-wise states
+  const [viewMode, setViewMode] = useState<"list" | "customer">("list")
+  const [customerWiseOrders, setCustomerWiseOrders] = useState<SalesOrder[]>([])
+  const [customerWiseLoading, setCustomerWiseLoading] = useState(false)
+  const [expandedCustomers, setExpandedCustomers] = useState<Record<string, boolean>>({})
+  const [customerSortBy, setCustomerSortBy] = useState<"orders_desc" | "orders_asc" | "amount_desc" | "name_asc" | "latest">("orders_desc")
+  const listRequestIdRef = useRef(0)
+  const customerRequestIdRef = useRef(0)
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -196,48 +274,154 @@ export default function SalesPage() {
   const [viewOrder, setViewOrder] = useState<SalesOrder | null>(null)
   const [editOrder, setEditOrder] = useState<SalesOrder | null>(null)
 
-  // ── Server-side fetch (re-runs on every filter / page change) ────────────
-  const fetchOrders = async () => {
+  const getActiveFilterParams = () => ({
+    search: searchTerm || undefined,
+    customerId: searchCustomerId !== "ALL" ? searchCustomerId : undefined,
+    salesPersonId: searchSalesPersonId !== "ALL" ? searchSalesPersonId : undefined,
+    routeId: searchRouteId !== "ALL" ? searchRouteId : undefined,
+    isTaxInvoice: searchIsTaxInvoice !== "ALL" ? searchIsTaxInvoice : undefined,
+    status: searchStatus !== "ALL" ? searchStatus : undefined,
+    deliveryOrderStatus: searchDeliveryOrderStatus !== "ALL" ? searchDeliveryOrderStatus : undefined,
+    startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+    endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+  })
+
+  const applySummaryFromResponse = (result: any) => {
+    setTotalOrders(result.pagination?.total ?? result.data?.length ?? 0)
+    if (result.summary) {
+      setSummaryData({
+        totalAmount: result.summary.totalAmount || 0,
+        totalApprovedCount: result.summary.totalApprovedCount || 0,
+        totalApprovedAmount: result.summary.totalApprovedAmount || 0,
+        totalPendingCount: result.summary.totalPendingCount || 0,
+        totalPendingAmount: result.summary.totalPendingAmount || 0,
+        totalDeliveredCount: result.summary.totalDeliveredCount || 0,
+        totalDeliveredAmount: result.summary.totalDeliveredAmount || 0,
+      })
+    }
+  }
+
+  // ── Server-side paginated fetch (for All Orders view) ────────────────────
+  const fetchPaginatedOrders = async () => {
+    const reqId = ++listRequestIdRef.current
     setLoading(true)
     setError("")
     try {
       const result = await salesOrdersApi.getAll({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm || undefined,
-        customerId: searchCustomerId !== "ALL" ? searchCustomerId : undefined,
-        salesPersonId: searchSalesPersonId !== "ALL" ? searchSalesPersonId : undefined,
-        routeId: searchRouteId !== "ALL" ? searchRouteId : undefined,
-        isTaxInvoice: searchIsTaxInvoice !== "ALL" ? searchIsTaxInvoice : undefined,
-        status: searchStatus !== "ALL" ? searchStatus : undefined,
-        deliveryOrderStatus: searchDeliveryOrderStatus !== "ALL" ? searchDeliveryOrderStatus : undefined,
-        startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
-        endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+        ...getActiveFilterParams(),
       })
+      if (reqId !== listRequestIdRef.current) return
       setSalesOrders(result.data)
-      setTotalOrders(result.pagination.total)
       setTotalPages(result.pagination.totalPages)
-      if (result.summary) {
-        setSummaryData({
-          totalAmount: result.summary.totalAmount || 0,
-          totalApprovedCount: result.summary.totalApprovedCount || 0,
-          totalApprovedAmount: result.summary.totalApprovedAmount || 0,
-          totalPendingCount: result.summary.totalPendingCount || 0,
-          totalPendingAmount: result.summary.totalPendingAmount || 0,
-          totalDeliveredCount: result.summary.totalDeliveredCount || 0,
-          totalDeliveredAmount: result.summary.totalDeliveredAmount || 0,
-        })
-      }
+      applySummaryFromResponse(result)
     } catch (err: any) {
+      if (reqId !== listRequestIdRef.current) return
       setError(err.message || "Failed to load orders")
     } finally {
-      setLoading(false)
+      if (reqId === listRequestIdRef.current) {
+        setLoading(false)
+      }
+    }
+  }
+
+  // ── Full filtered fetch (for Customer-Wise grouped view) ─────────────────
+  const fetchCustomerWiseOrders = async () => {
+    const reqId = ++customerRequestIdRef.current
+    setCustomerWiseLoading(true)
+    setError("")
+    try {
+      const result = await salesOrdersApi.getAll({
+        ...getActiveFilterParams(),
+      })
+      if (reqId !== customerRequestIdRef.current) return
+      setCustomerWiseOrders(result.data)
+      applySummaryFromResponse(result)
+    } catch (err: any) {
+      if (reqId !== customerRequestIdRef.current) return
+      setError(err.message || "Failed to load customer-wise orders")
+    } finally {
+      if (reqId === customerRequestIdRef.current) {
+        setCustomerWiseLoading(false)
+      }
+    }
+  }
+
+  const fetchOrders = async () => {
+    if (viewMode === "customer") {
+      await fetchCustomerWiseOrders()
+    } else {
+      await fetchPaginatedOrders()
     }
   }
 
   useEffect(() => {
     fetchOrders()
-  }, [currentPage, itemsPerPage, searchTerm, searchCustomerId, searchSalesPersonId, searchRouteId, searchIsTaxInvoice, searchStatus, searchDeliveryOrderStatus, startDate, endDate])
+  }, [viewMode, currentPage, itemsPerPage, searchTerm, searchCustomerId, searchSalesPersonId, searchRouteId, searchIsTaxInvoice, searchStatus, searchDeliveryOrderStatus, startDate, endDate])
+
+  const customerGroups = useMemo(() => {
+    const groups = groupOrdersByCustomer(customerWiseOrders)
+    return groups.sort((a, b) => {
+      switch (customerSortBy) {
+        case "orders_asc":
+          return a.orderCount - b.orderCount || a.customerName.localeCompare(b.customerName)
+        case "amount_desc":
+          return b.totalAmount - a.totalAmount || b.orderCount - a.orderCount
+        case "name_asc":
+          return a.customerName.localeCompare(b.customerName)
+        case "latest": {
+          const tA = a.latestOrderDate ? new Date(a.latestOrderDate).getTime() || 0 : 0
+          const tB = b.latestOrderDate ? new Date(b.latestOrderDate).getTime() || 0 : 0
+          return tB - tA || b.orderCount - a.orderCount
+        }
+        case "orders_desc":
+        default:
+          return b.orderCount - a.orderCount || b.totalAmount - a.totalAmount || a.customerName.localeCompare(b.customerName)
+      }
+    })
+  }, [customerWiseOrders, customerSortBy])
+
+  const customerWiseTotals = useMemo(() => {
+    return customerGroups.reduce(
+      (acc, g) => {
+        acc.orderCount += g.orderCount
+        acc.pendingCount += g.pendingCount
+        acc.approvedCount += g.approvedCount
+        acc.deliveredCount += g.deliveredCount
+        acc.cancelledRejectedCount += g.cancelledCount + g.rejectedCount
+        acc.totalAmount += g.totalAmount
+        return acc
+      },
+      {
+        orderCount: 0,
+        pendingCount: 0,
+        approvedCount: 0,
+        deliveredCount: 0,
+        cancelledRejectedCount: 0,
+        totalAmount: 0,
+      }
+    )
+  }, [customerGroups])
+
+  const toggleCustomerExpanded = (key: string) => {
+    setExpandedCustomers((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const allCustomersExpanded =
+    customerGroups.length > 0 && customerGroups.every((g) => Boolean(expandedCustomers[g.key]))
+
+  const toggleExpandAllCustomers = () => {
+    if (allCustomersExpanded) {
+      setExpandedCustomers({})
+    } else {
+      const next: Record<string, boolean> = {}
+      customerGroups.forEach((g) => {
+        next[g.key] = true
+      })
+      setExpandedCustomers(next)
+    }
+  }
 
   // Fetch routes list for filter
   useEffect(() => {
@@ -909,9 +1093,12 @@ export default function SalesPage() {
     }
   }
 
+  const findOrderById = (orderId: number) =>
+    salesOrders.find(o => o.id === orderId) || customerWiseOrders.find(o => o.id === orderId)
+
   // Delete order handler
   const handleDeleteOrder = async (orderId: number) => {
-    const orderToDelete = salesOrders.find(o => o.id === orderId)
+    const orderToDelete = findOrderById(orderId)
     const orderNumber = orderToDelete?.orderNumber || `Order #${orderId}`
 
     setLoading(true)
@@ -936,7 +1123,7 @@ export default function SalesPage() {
 
   // Approve/Reject order handler
   const handleApproveRejectOrder = async (orderId: number, status: "Approved" | "Rejected") => {
-    const orderToUpdate = salesOrders.find(o => o.id === orderId)
+    const orderToUpdate = findOrderById(orderId)
     const orderNumber = orderToUpdate?.orderNumber || `Order #${orderId}`
 
     setLoading(true)
@@ -961,7 +1148,7 @@ export default function SalesPage() {
   }
 
   const handleCancelOrder = async (orderId: number) => {
-    const orderToUpdate = salesOrders.find(o => o.id === orderId)
+    const orderToUpdate = findOrderById(orderId)
     const orderNumber = orderToUpdate?.orderNumber || `Order #${orderId}`
 
     setLoading(true)
@@ -1126,21 +1313,86 @@ export default function SalesPage() {
   }
 
   // Ensure all logic is above this line and no stray code before return
+  const renderOrderDeliveryBadges = (order: SalesOrder) => {
+    const routeName = order.Route?.routeName || routes.find(r => String(r.id) === String(order.routeId))?.routeName
+    return (
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${order.isDelivery
+          ? 'bg-green-100 text-green-700'
+          : 'bg-blue-100 text-blue-700'
+          }`}>
+          {order.isDelivery ? 'Delivery' : 'Pickup'}
+        </span>
+        {routeName && (
+          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+            {routeName}
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  const renderOrderActions = (order: SalesOrder) => (
+    <div className="flex items-center space-x-2">
+      <Button className="h-8 w-8" variant="outline" size="sm" onClick={() => setViewOrder(order)}>
+        <Eye className="h-4 w-4 text-blue-700" />
+      </Button>
+
+      {(order.status === "Pending" || order.status === "Processing") && (
+        <Button className="h-8 w-8" variant="outline" size="sm" onClick={() => setEditOrder(order)}>
+          <Edit className="h-4 w-4" />
+        </Button>
+      )}
+      {(order.status === "Pending" || order.status === "Processing" || order.status === "Cancelled") && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 w-8 hover:bg-red-50 hover:border-red-200">
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-red-600">Delete Sales Order</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{order.orderNumber}</strong>?
+                <br />
+                <br />
+                {order.status === "Processing" && (
+                  <div className="text-orange-600 font-medium mb-2">
+                    ⚠️ Warning: This order is currently being processed.
+                  </div>
+                )}
+                This action cannot be undone and will permanently remove:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Order details and items</li>
+                  <li>Customer delivery information</li>
+                  <li>All associated order data</li>
+                </ul>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => handleDeleteOrder(order.id)}
+                className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                disabled={loading}
+              >
+                {loading ? "Deleting..." : "Delete Order"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </div>
+  )
+
   // ── Export filtered sales orders to Excel ───────────────────────────────
   const exportSalesOrdersExcel = async () => {
     try {
       setExporting(true)
       // Fetch all filtered rows (no limit)
       const result = await salesOrdersApi.getAll({
-        search: searchTerm || undefined,
-        customerId: searchCustomerId !== "ALL" ? searchCustomerId : undefined,
-        salesPersonId: searchSalesPersonId !== "ALL" ? searchSalesPersonId : undefined,
-        routeId: searchRouteId !== "ALL" ? searchRouteId : undefined,
-        isTaxInvoice: searchIsTaxInvoice !== "ALL" ? searchIsTaxInvoice : undefined,
-        status: searchStatus !== "ALL" ? searchStatus : undefined,
-        deliveryOrderStatus: searchDeliveryOrderStatus !== "ALL" ? searchDeliveryOrderStatus : undefined,
-        startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
-        endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+        ...getActiveFilterParams(),
       })
       const orders = result.data
 
@@ -1371,6 +1623,79 @@ export default function SalesPage() {
         { wch: 18 }, // Total Amount (LKR)
       ]
       XLSX.utils.book_append_sheet(wb, wsItemSummary, "Item Total Qty Summary")
+
+      // ── Sheet 4: Customer Order Summary ──────────────────────────────────
+      const customerSummaryGroups = groupOrdersByCustomer(orders).sort(
+        (a, b) => b.orderCount - a.orderCount || b.totalAmount - a.totalAmount || a.customerName.localeCompare(b.customerName)
+      )
+      const customerSheetHeader = [
+        "Customer",
+        "Customer Type",
+        "Contact Number",
+        "Total Orders",
+        "Pending",
+        "Approved",
+        "Delivered",
+        "Cancelled / Rejected",
+        "Total Amount (LKR)",
+      ]
+      const customerSheetRows: any[][] = [customerSheetHeader]
+      let csOrdersTotal = 0
+      let csPendingTotal = 0
+      let csApprovedTotal = 0
+      let csDeliveredTotal = 0
+      let csCancelledTotal = 0
+      let csAmountTotal = 0
+
+      customerSummaryGroups.forEach((g) => {
+        const cancelledRejected = g.cancelledCount + g.rejectedCount
+        csOrdersTotal += g.orderCount
+        csPendingTotal += g.pendingCount
+        csApprovedTotal += g.approvedCount
+        csDeliveredTotal += g.deliveredCount
+        csCancelledTotal += cancelledRejected
+        csAmountTotal += g.totalAmount
+
+        customerSheetRows.push([
+          g.customerName,
+          g.customerType,
+          g.contactNumber,
+          g.orderCount,
+          g.pendingCount,
+          g.approvedCount,
+          g.deliveredCount,
+          cancelledRejected,
+          Number(g.totalAmount.toFixed(2)),
+        ])
+      })
+
+      if (customerSummaryGroups.length > 0) {
+        customerSheetRows.push([
+          "TOTAL",
+          `${customerSummaryGroups.length} Customers`,
+          "",
+          csOrdersTotal,
+          csPendingTotal,
+          csApprovedTotal,
+          csDeliveredTotal,
+          csCancelledTotal,
+          Number(csAmountTotal.toFixed(2)),
+        ])
+      }
+
+      const wsCustomerSummary = XLSX.utils.aoa_to_sheet(customerSheetRows)
+      wsCustomerSummary["!cols"] = [
+        { wch: 32 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 20 },
+        { wch: 18 },
+      ]
+      XLSX.utils.book_append_sheet(wb, wsCustomerSummary, "Customer Order Summary")
 
       const activeFilters = [
         searchStatus !== "ALL" ? searchStatus : null,
@@ -2134,7 +2459,84 @@ export default function SalesPage() {
 
         {/* Orders List */}
         <Card>
-          <CardHeader className="p-2 bg-slate-50/50 border-b border-slate-100">
+          <CardHeader className="p-2 bg-slate-50/50 border-b border-slate-100 space-y-2">
+            {/* View Switcher & Customer-Wise Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="inline-flex items-center rounded-lg bg-slate-200/70 p-0.5 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                    viewMode === "list"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  All Orders
+                  <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px] h-4">
+                    {totalOrders}
+                  </Badge>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("customer")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                    viewMode === "customer"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Customer-Wise
+                  {viewMode === "customer" && !customerWiseLoading && (
+                    <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px] h-4 bg-blue-100 text-blue-700">
+                      {customerGroups.length}
+                    </Badge>
+                  )}
+                </button>
+              </div>
+
+              {viewMode === "customer" && (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {!customerWiseLoading && (
+                    <span className="text-muted-foreground">
+                      {customerGroups.length} {customerGroups.length === 1 ? "customer" : "customers"} • {customerWiseOrders.length} {customerWiseOrders.length === 1 ? "order" : "orders"}
+                    </span>
+                  )}
+                  <Select
+                    value={customerSortBy}
+                    onValueChange={(value: "orders_desc" | "orders_asc" | "amount_desc" | "name_asc" | "latest") =>
+                      setCustomerSortBy(value)
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs w-[165px]">
+                      <SelectValue placeholder="Sort customers" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem className="text-xs" value="orders_desc">Sort: Most Orders</SelectItem>
+                      <SelectItem className="text-xs" value="orders_asc">Sort: Fewest Orders</SelectItem>
+                      <SelectItem className="text-xs" value="amount_desc">Sort: Highest Amount</SelectItem>
+                      <SelectItem className="text-xs" value="name_asc">Sort: Customer (A-Z)</SelectItem>
+                      <SelectItem className="text-xs" value="latest">Sort: Latest Order</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {customerGroups.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={toggleExpandAllCustomers}
+                      className="h-8 text-xs"
+                    >
+                      {allCustomersExpanded ? "Collapse All" : "Expand All"}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Search and Filters */}
             <div className="flex flex-wrap items-center gap-2 w-full text-xs">
@@ -2143,21 +2545,30 @@ export default function SalesPage() {
                 <Input
                   placeholder="Search orders..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   className="pl-8 h-8 text-xs w-48 sm:w-56"
                 />
               </div>
               <CustomerSelect
                 customers={customers}
                 value={searchCustomerId === "ALL" ? "" : searchCustomerId}
-                onValueChange={(id) => setSearchCustomerId(id ? String(id) : "ALL")}
+                onValueChange={(id) => {
+                  setSearchCustomerId(id ? String(id) : "ALL")
+                  setCurrentPage(1)
+                }}
                 placeholder="All Customers"
                 showMainBadge={true}
                 className="h-8 text-xs font-normal w-[200px] sm:w-[220px]"
               />
               <Select
                 value={searchSalesPersonId}
-                onValueChange={setSearchSalesPersonId}
+                onValueChange={(val) => {
+                  setSearchSalesPersonId(val)
+                  setCurrentPage(1)
+                }}
               >
                 <SelectTrigger className="h-8 text-xs w-[150px]">
                   <SelectValue placeholder="Sales Person" />
@@ -2171,7 +2582,10 @@ export default function SalesPage() {
               </Select>
               <Select
                 value={searchRouteId}
-                onValueChange={setSearchRouteId}
+                onValueChange={(val) => {
+                  setSearchRouteId(val)
+                  setCurrentPage(1)
+                }}
               >
                 <SelectTrigger className="h-8 text-xs w-[130px]">
                   <SelectValue placeholder="Route" />
@@ -2185,7 +2599,10 @@ export default function SalesPage() {
               </Select>
               <Select
                 value={searchIsTaxInvoice}
-                onValueChange={setSearchIsTaxInvoice}
+                onValueChange={(val) => {
+                  setSearchIsTaxInvoice(val)
+                  setCurrentPage(1)
+                }}
               >
                 <SelectTrigger className="h-8 text-xs w-[135px]">
                   <SelectValue placeholder="Invoice Type" />
@@ -2198,7 +2615,10 @@ export default function SalesPage() {
               </Select>
               <Select
                 value={searchStatus}
-                onValueChange={setSearchStatus}
+                onValueChange={(val) => {
+                  setSearchStatus(val)
+                  setCurrentPage(1)
+                }}
               >
                 <SelectTrigger className="h-8 text-xs w-[120px]">
                   <SelectValue placeholder="Status" />
@@ -2213,7 +2633,10 @@ export default function SalesPage() {
               </Select>
               <Select
                 value={searchDeliveryOrderStatus}
-                onValueChange={setSearchDeliveryOrderStatus}
+                onValueChange={(val) => {
+                  setSearchDeliveryOrderStatus(val)
+                  setCurrentPage(1)
+                }}
               >
                 <SelectTrigger className="h-8 text-xs w-[135px]">
                   <SelectValue placeholder="DO Status" />
@@ -2342,12 +2765,204 @@ export default function SalesPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
+            {viewMode === "customer" ? (
+              customerWiseLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <span className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mr-2"></span>
+                  Loading customer-wise orders...
+                </div>
+              ) : error && customerWiseOrders.length === 0 ? (
+                <div className="text-center text-red-600 py-8">{error}</div>
+              ) : customerGroups.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">No sales orders found.</div>
+              ) : (
+                <Table className="text-xs">
+                  <TableHeader>
+                    <TableRow className="bg-gray-100">
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead className="text-center">Orders</TableHead>
+                      <TableHead className="text-center">Pending</TableHead>
+                      <TableHead className="text-center">Approved</TableHead>
+                      <TableHead className="text-center">Delivered</TableHead>
+                      <TableHead className="text-center">Cancelled</TableHead>
+                      <TableHead>Last Order Date</TableHead>
+                      <TableHead className="text-right">Total Amount (LKR)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {customerGroups.map((group) => {
+                      const isExpanded = Boolean(expandedCustomers[group.key])
+                      const cancelledOrRejected = group.cancelledCount + group.rejectedCount
 
-            {loading ? (
+                      return (
+                        <Fragment key={group.key}>
+                          <TableRow
+                            className="cursor-pointer hover:bg-muted/50 transition select-none"
+                            onClick={() => toggleCustomerExpanded(group.key)}
+                          >
+                            <TableCell className="py-2">
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              <div className="font-semibold text-slate-900">{group.customerName}</div>
+                              <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                                {group.customerType && <span>{group.customerType}</span>}
+                                {group.customerType && group.contactNumber && <span>•</span>}
+                                {group.contactNumber && <span>{group.contactNumber}</span>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-200 font-semibold">
+                                {group.orderCount} {group.orderCount === 1 ? "Order" : "Orders"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              {group.pendingCount > 0 ? (
+                                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                                  {group.pendingCount}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              {group.approvedCount > 0 ? (
+                                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                  {group.approvedCount}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              {group.deliveredCount > 0 ? (
+                                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-800">
+                                  {group.deliveredCount}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              {cancelledOrRejected > 0 ? (
+                                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                  {cancelledOrRejected}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-2 font-medium">
+                              {formatDate(group.latestOrderDate)}
+                            </TableCell>
+                            <TableCell className="py-2 text-right font-semibold text-green-700">
+                              {group.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+
+                          {isExpanded && (
+                            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                              <TableCell colSpan={9} className="p-3">
+                                <div className="rounded-md border bg-white overflow-x-auto">
+                                  <Table className="text-xs">
+                                    <TableHeader>
+                                      <TableRow className="bg-slate-100/80">
+                                        <TableHead>Order #</TableHead>
+                                        <TableHead>Type & Route</TableHead>
+                                        <TableHead>Sales Person</TableHead>
+                                        <TableHead>Order Date</TableHead>
+                                        <TableHead>Delivery Date</TableHead>
+                                        <TableHead>Dispatch Date</TableHead>
+                                        <TableHead className="text-right">Amount (LKR)</TableHead>
+                                        <TableHead>SO Status</TableHead>
+                                        <TableHead>DO Status</TableHead>
+                                        <TableHead>Actions</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {group.orders.map((order) => (
+                                        <TableRow key={order.id} className="hover:bg-muted/40 transition">
+                                          <TableCell className="py-2">
+                                            <div className="font-semibold text-blue-700">{order.orderNumber}</div>
+                                            {order.isTaxInvoice && (
+                                              <div className="text-[11px] text-muted-foreground">(Tax Invoice)</div>
+                                            )}
+                                            {order.poNumber && (
+                                              <div className="text-[10px] text-muted-foreground">PO: {order.poNumber}</div>
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="py-2">
+                                            {renderOrderDeliveryBadges(order)}
+                                          </TableCell>
+                                          <TableCell className="py-2">
+                                            {order.SalesPerson?.fullName || "-"}
+                                          </TableCell>
+                                          <TableCell className="py-2">
+                                            <div>
+                                              <div className="font-medium">{order.orderDate ? formatDate(order.orderDate) : formatDate(order.createdAt || "")}</div>
+                                              {order.createdAt && (
+                                                <div className="text-[10px] text-muted-foreground">
+                                                  Created: {format(new Date(order.createdAt), "dd/MM/yy p")}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="py-2">{formatDate(order.deliveryDate || "")}</TableCell>
+                                          <TableCell className="py-2 font-medium">{formatDate(order.dispatchDate || "")}</TableCell>
+                                          <TableCell className="text-right py-2">
+                                            <span className="font-medium text-green-700">
+                                              {Number(order.totalAmount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                          </TableCell>
+                                          <TableCell className="py-2">{getStatusBadge(order.status)}</TableCell>
+                                          <TableCell className="py-2">{getStatusBadge(order.deliveryOrderStatus ? order.deliveryOrderStatus : "Pending")}</TableCell>
+                                          <TableCell className="py-2">{renderOrderActions(order)}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+
+                    <TableRow className="bg-slate-100/90 hover:bg-slate-100/90 font-semibold border-t-2">
+                      <TableCell className="py-2.5"></TableCell>
+                      <TableCell className="py-2.5">
+                        Total ({customerGroups.length} {customerGroups.length === 1 ? "Customer" : "Customers"})
+                      </TableCell>
+                      <TableCell className="py-2.5 text-center">
+                        <Badge className="bg-slate-800 text-white hover:bg-slate-800">
+                          {customerWiseTotals.orderCount} {customerWiseTotals.orderCount === 1 ? "Order" : "Orders"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-2.5 text-center text-amber-700">{customerWiseTotals.pendingCount}</TableCell>
+                      <TableCell className="py-2.5 text-center text-green-700">{customerWiseTotals.approvedCount}</TableCell>
+                      <TableCell className="py-2.5 text-center text-sky-700">{customerWiseTotals.deliveredCount}</TableCell>
+                      <TableCell className="py-2.5 text-center text-red-700">{customerWiseTotals.cancelledRejectedCount}</TableCell>
+                      <TableCell className="py-2.5">-</TableCell>
+                      <TableCell className="py-2.5 text-right text-green-800">
+                        {customerWiseTotals.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              )
+            ) : loading ? (
               <div className="flex items-center justify-center py-8">
                 <span className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mr-2"></span>
                 Loading orders...
               </div>
+            ) : error && salesOrders.length === 0 ? (
+              <div className="text-center text-red-600 py-8">{error}</div>
             ) : totalOrders === 0 ? (
               <div className="text-center text-muted-foreground py-8">No sales orders found.</div>
             ) : (
@@ -2360,7 +2975,7 @@ export default function SalesPage() {
                       <TableHead>Order Date</TableHead>
                       <TableHead>Delivery Date</TableHead>
                       <TableHead>Dispatch Date</TableHead>
-                      <TableHead>Amount (LKR)</TableHead>
+                      <TableHead className="text-right">Amount (LKR)</TableHead>
                       <TableHead>SO Status</TableHead>
                       <TableHead>DO Status</TableHead>
                       <TableHead>Actions</TableHead>
@@ -2369,7 +2984,7 @@ export default function SalesPage() {
                   <TableBody>
                     {salesOrders.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={9} className="text-center py-8">
                           <div className="text-muted-foreground">
                             <p>No orders on this page</p>
                           </div>
@@ -2390,20 +3005,7 @@ export default function SalesPage() {
                               <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                                 <span>{order.customerType}</span>
                                 <span>•</span>
-                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${order.isDelivery
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-blue-100 text-blue-700'
-                                  }`}>
-                                  {order.isDelivery ? 'Delivery' : 'Pickup'}
-                                </span>
-                                {(order.Route?.routeName || routes.find(r => String(r.id) === String(order.routeId))?.routeName) && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                                      {order.Route?.routeName || routes.find(r => String(r.id) === String(order.routeId))?.routeName}
-                                    </span>
-                                  </>
-                                )}
+                                {renderOrderDeliveryBadges(order)}
                               </div>
                             </div>
                           </TableCell>
@@ -2430,59 +3032,7 @@ export default function SalesPage() {
                           <TableCell className="py-2">{getStatusBadge(order.status)}</TableCell>
                           {/* <TableCell>{getPaymentStatusBadge(order.paymentStatus ?? "Pending")}</TableCell> */}
                           <TableCell className="py-2">{getStatusBadge(order.deliveryOrderStatus ? order.deliveryOrderStatus : "Pending")}</TableCell>
-                          <TableCell className="py-2">
-                            <div className="flex items-center space-x-2">
-                              <Button className="h-8 w-8" variant="outline" size="sm" onClick={() => setViewOrder(order)}>
-                                <Eye className="h-4 w-4 text-blue-700" />
-                              </Button>
-
-                              {(order.status === "Pending" || order.status === "Processing") && (
-                                <Button className="h-8 w-8" variant="outline" size="sm" onClick={() => setEditOrder(order)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {(order.status === "Pending" || order.status === "Processing" || order.status === "Cancelled") && (
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-8 w-8 hover:bg-red-50 hover:border-red-200">
-                                      <Trash2 className="h-4 w-4 text-red-600" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle className="text-red-600">Delete Sales Order</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete <strong>{order.orderNumber}</strong>?
-                                        <br />
-                                        <br />
-                                        {order.status === "Processing" && (
-                                          <div className="text-orange-600 font-medium mb-2">
-                                            ⚠️ Warning: This order is currently being processed.
-                                          </div>
-                                        )}
-                                        This action cannot be undone and will permanently remove:
-                                        <ul className="list-disc list-inside mt-2 space-y-1">
-                                          <li>Order details and items</li>
-                                          <li>Customer delivery information</li>
-                                          <li>All associated order data</li>
-                                        </ul>
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteOrder(order.id)}
-                                        className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
-                                        disabled={loading}
-                                      >
-                                        {loading ? "Deleting..." : "Delete Order"}
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              )}
-                            </div>
-                          </TableCell>
+                          <TableCell className="py-2">{renderOrderActions(order)}</TableCell>
                         </TableRow>
                       ))
                     )}

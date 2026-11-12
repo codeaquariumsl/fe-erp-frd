@@ -283,11 +283,24 @@ export default function DispatchedOrdersPage() {
         )
     }
 
+    const getItemTotalQty = (item: Pick<SummaryItem, "qty" | "freeQty">) =>
+        Number(item.qty || 0) + Number(item.freeQty || 0)
+
     const filteredSummaries = summaryData?.summaries || []
     const selectedSummaryItems = selectedSummary?.SummaryItems || []
     const totalSummaryBilledQty = selectedSummaryItems.reduce((sum, item) => sum + Number(item.qty || 0), 0)
     const totalSummaryFreeQty = selectedSummaryItems.reduce((sum, item) => sum + Number(item.freeQty || 0), 0)
-    const totalSummaryOverallQty = totalSummaryBilledQty + totalSummaryFreeQty
+    const totalSummaryOverallQty = selectedSummaryItems.reduce((sum, item) => sum + getItemTotalQty(item), 0)
+    const totalSummaryScannedQty = selectedSummaryItems.reduce((sum, item) => sum + (scannedQuantities[item.id] || 0), 0)
+    const allSelectedSummaryItemsScanned =
+        selectedSummaryItems.length > 0 &&
+        selectedSummaryItems.every(item => (scannedQuantities[item.id] || 0) === getItemTotalQty(item))
+
+    const scannedItemBilledQty = scannedItem ? Number(scannedItem.qty || 0) : 0
+    const scannedItemFreeQty = scannedItem ? Number(scannedItem.freeQty || 0) : 0
+    const scannedItemTotalQty = scannedItem ? getItemTotalQty(scannedItem) : 0
+    const scannedItemScannedQty = scannedItem ? (scannedQuantities[scannedItem.id] || 0) : 0
+    const scannedItemRemainingQty = Math.max(0, scannedItemTotalQty - scannedItemScannedQty)
 
     const stats = {
         total: summaryData?.summary?.total || 0,
@@ -315,6 +328,9 @@ export default function DispatchedOrdersPage() {
             toastr.success("Order dispatched successfully", { title: "Success" })
             fetchSummaries() // Refresh the list
             setIsDetailsOpen(false)
+            setSelectedSummary(null)
+            setScannedQuantities({})
+            setBarcode("")
         } catch (err: any) {
             // Extract error details from the error object
             const errorMessage = err?.error || "Failed to dispatch order"
@@ -357,7 +373,8 @@ export default function DispatchedOrdersPage() {
         }
 
         const currentScanned = scannedQuantities[scannedItem.id] || 0
-        const remainingQty = scannedItem.qty - currentScanned
+        const targetTotalQty = getItemTotalQty(scannedItem)
+        const remainingQty = targetTotalQty - currentScanned
 
         if (qty > remainingQty) {
             toastr.error(`Cannot add ${qty}. Only ${remainingQty} remaining.`)
@@ -379,16 +396,21 @@ export default function DispatchedOrdersPage() {
         if (!scannedItem || !selectedSummary) return
 
         const scannedQty = scannedQuantities[scannedItem.id] || 0
-        if (scannedQty !== scannedItem.qty) {
-            toastr.error(`Please scan all ${scannedItem.qty} items before dispatching`)
+        const targetTotalQty = getItemTotalQty(scannedItem)
+        if (scannedQty !== targetTotalQty) {
+            toastr.error(`Please scan all ${targetTotalQty} items before dispatching`)
             return
         }
 
         try {
-            await handleDispatch(selectedSummary.id, [{
-                id: scannedItem.id,
-                batchId: scannedItem.batchId
-            }])
+            const summaryItemIds = scannedItem.mergeInfo?.summaryItemIds || [scannedItem.id]
+            await handleDispatch(
+                selectedSummary.id,
+                summaryItemIds.map(summaryItemId => ({
+                    id: summaryItemId,
+                    batchId: scannedItem.batchId
+                }))
+            )
             setIsQuantityDialogOpen(false)
             setScannedItem(null)
         } catch (error) {
@@ -538,8 +560,13 @@ export default function DispatchedOrdersPage() {
                 const itemNo = (idx + 1).toString();
                 const itemCode = item.Item?.barcode || item.Item?.sku || "-";
                 const itemName = item.Item?.name || "Unknown Item";
-                const freeQtyText = Number(item.freeQty || 0) > 0 ? ` (+${item.freeQty} Free)` : "";
-                const quantity = `${item.qty} ${item.Item?.unit || 'pcs'}${freeQtyText}`;
+                const billedQty = Number(item.qty || 0);
+                const freeQty = Number(item.freeQty || 0);
+                const totalQty = getItemTotalQty(item);
+                const unit = item.Item?.unit || 'pcs';
+                const quantity = freeQty > 0
+                    ? `${totalQty} ${unit} (${billedQty}+${freeQty} Free)`
+                    : `${totalQty} ${unit}`;
 
                 const doInfo = item.DeliveryOrder?.doNumber ? `DO: ${item.DeliveryOrder.doNumber}` : "";
                 const batchInfo = item.Batch?.batchNumber ? `Batch: ${item.Batch.batchNumber}` : "";
@@ -754,7 +781,11 @@ export default function DispatchedOrdersPage() {
                 {/* Details Dialog */}
                 <Dialog open={isDetailsOpen} onOpenChange={(open) => {
                     setIsDetailsOpen(open)
-                    if (!open) setSelectedSummary(null)
+                    if (!open) {
+                        setSelectedSummary(null)
+                        setScannedQuantities({})
+                        setBarcode("")
+                    }
                 }}>
                     <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
@@ -770,6 +801,9 @@ export default function DispatchedOrdersPage() {
                                         </div>
                                         <div className="text-sm text-gray-600">
                                             Total Items: <span className="font-mono">{selectedSummaryItems.length}</span> | Billed Qty: <span className="font-mono">{totalSummaryBilledQty}</span> | Free Qty: <span className="font-mono text-purple-700 font-bold">{totalSummaryFreeQty}</span> | Overall Total: <span className="font-mono font-bold text-blue-700">{totalSummaryOverallQty}</span>
+                                            {!selectedSummary.isDispatched && (
+                                                <> | Scanned: <span className={`font-mono font-bold ${totalSummaryScannedQty === totalSummaryOverallQty ? "text-green-600" : "text-amber-600"}`}>{totalSummaryScannedQty} / {totalSummaryOverallQty}</span></>
+                                            )}
                                         </div>
                                     </div>
                                     {selectedSummary.SummaryItems?.[0]?.delivery && (
@@ -815,11 +849,16 @@ export default function DispatchedOrdersPage() {
                                             selectedSummaryItems.map((item, idx) => {
                                                 const billedQty = Number(item.qty || 0)
                                                 const freeQty = Number(item.freeQty || 0)
-                                                const totalQty = billedQty + freeQty
+                                                const totalQty = getItemTotalQty(item)
+                                                const scannedQty = scannedQuantities[item.id] || 0
+                                                const isFullyScanned = scannedQty === totalQty
                                                 const unit = item.Item?.unit || ""
 
                                                 return (
-                                                    <TableRow key={item.id} className="hover:bg-gray-50">
+                                                    <TableRow
+                                                        key={item.id}
+                                                        className={!selectedSummary?.isDispatched && isFullyScanned ? "bg-green-50/50 hover:bg-green-50" : "hover:bg-gray-50"}
+                                                    >
                                                         <TableCell className="py-2 text-xs text-gray-500">{idx + 1}</TableCell>
                                                         <TableCell className="py-2">
                                                             <div>
@@ -829,24 +868,26 @@ export default function DispatchedOrdersPage() {
                                                                 </div>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="py-2">
-                                                            <div className="flex items-center gap-1">
-                                                                {!selectedSummary?.isDispatched && (
-                                                                    <>
-                                                                        <span>{scannedQuantities[item.id] || 0}</span>
-                                                                        <span className="text-muted-foreground">/</span>
-                                                                    </>
-                                                                )}
-                                                                <span className="font-semibold text-blue-700">
-                                                                    {billedQty}{unit ? ` ${unit}` : ""}
-                                                                </span>
-                                                            </div>
+                                                        <TableCell className="py-2 font-semibold text-blue-700">
+                                                            {billedQty}{unit ? ` ${unit}` : ""}
                                                         </TableCell>
                                                         <TableCell className="py-2 font-semibold text-purple-700">
                                                             {freeQty > 0 ? `+${freeQty}${unit ? ` ${unit}` : ""}` : "0"}
                                                         </TableCell>
-                                                        <TableCell className="py-2 font-bold text-gray-900">
-                                                            {totalQty}{unit ? ` ${unit}` : ""}
+                                                        <TableCell className="py-2">
+                                                            <div className="flex items-center gap-1">
+                                                                {!selectedSummary?.isDispatched && (
+                                                                    <>
+                                                                        <span className={isFullyScanned ? "font-semibold text-green-600" : scannedQty > 0 ? "font-semibold text-amber-600" : "font-semibold"}>
+                                                                            {scannedQty}
+                                                                        </span>
+                                                                        <span className="text-muted-foreground">/</span>
+                                                                    </>
+                                                                )}
+                                                                <span className="font-bold text-gray-900">
+                                                                    {totalQty}{unit ? ` ${unit}` : ""}
+                                                                </span>
+                                                            </div>
                                                         </TableCell>
                                                         <TableCell className="py-2">{item.Batch?.batchNumber}</TableCell>
                                                         <TableCell className="py-2">{item.ReleaseStore?.name}</TableCell>
@@ -869,7 +910,7 @@ export default function DispatchedOrdersPage() {
                                         autoFocus
                                     />
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Scan items to enable dispatch.
+                                        Scan Total Qty (Billed + Free) for all items to enable dispatch.
                                     </p>
                                 </div>
                             )}
@@ -877,7 +918,7 @@ export default function DispatchedOrdersPage() {
                                 <div className="mb-4 flex justify-end">
                                     <Button
                                         variant="default"
-                                        disabled={dispatching || !selectedSummary?.SummaryItems.every(item => (scannedQuantities[item.id] || 0) === item.qty)}
+                                        disabled={dispatching || !allSelectedSummaryItemsScanned}
                                         onClick={() => handleDispatch(
                                             selectedSummary.id,
                                             selectedSummary.SummaryItems.flatMap(item =>
@@ -926,19 +967,25 @@ export default function DispatchedOrdersPage() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <p className="text-sm text-muted-foreground">Required Qty</p>
-                                            <p className="font-semibold">{scannedItem.qty} {scannedItem.Item.unit}</p>
+                                            <p className="text-sm text-muted-foreground">Billed Qty</p>
+                                            <p className="font-semibold text-blue-700">{scannedItemBilledQty} {scannedItem.Item.unit}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Free Qty</p>
+                                            <p className="font-semibold text-purple-700">
+                                                {scannedItemFreeQty > 0 ? `+${scannedItemFreeQty}` : "0"} {scannedItem.Item.unit}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Total Required Qty</p>
+                                            <p className="font-bold text-gray-900">{scannedItemTotalQty} {scannedItem.Item.unit}</p>
                                         </div>
                                         <div>
                                             <p className="text-sm text-muted-foreground">Scanned Qty</p>
-                                            <p className="font-semibold">{scannedQuantities[scannedItem.id] || 0} {scannedItem.Item.unit}</p>
+                                            <p className={`font-semibold ${scannedItemScannedQty === scannedItemTotalQty ? "text-green-600" : ""}`}>
+                                                {scannedItemScannedQty} {scannedItem.Item.unit}
+                                            </p>
                                         </div>
-                                        {Number(scannedItem.freeQty || 0) > 0 && (
-                                            <div>
-                                                <p className="text-sm text-muted-foreground">Free Qty</p>
-                                                <p className="font-semibold text-purple-700">+{scannedItem.freeQty} {scannedItem.Item.unit}</p>
-                                            </div>
-                                        )}
                                     </div>
                                     <div>
                                         <p className="text-sm text-muted-foreground">Batch Number</p>
@@ -954,7 +1001,7 @@ export default function DispatchedOrdersPage() {
                                         id="quantity"
                                         type="number"
                                         min="1"
-                                        max={scannedItem.qty - (scannedQuantities[scannedItem.id] || 0)}
+                                        max={scannedItemRemainingQty}
                                         placeholder="Enter quantity"
                                         value={itemQuantity}
                                         onChange={(e) => setItemQuantity(e.target.value)}
@@ -966,7 +1013,7 @@ export default function DispatchedOrdersPage() {
                                         autoFocus
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Remaining: {scannedItem.qty - (scannedQuantities[scannedItem.id] || 0)} {scannedItem.Item.unit}
+                                        Remaining: {scannedItemRemainingQty} {scannedItem.Item.unit}
                                     </p>
                                 </div>
                             </div>
@@ -984,11 +1031,11 @@ export default function DispatchedOrdersPage() {
                             </Button>
                             <Button
                                 onClick={handleQuantitySubmit}
-                                disabled={!itemQuantity || parseInt(itemQuantity) <= 0}
+                                disabled={!itemQuantity || parseInt(itemQuantity) <= 0 || scannedItemRemainingQty <= 0}
                             >
                                 Add Quantity
                             </Button>
-                            {scannedItem && (scannedQuantities[scannedItem.id] || 0) === scannedItem.qty && (
+                            {scannedItem && scannedItemScannedQty === scannedItemTotalQty && (
                                 <Button
                                     onClick={handleDispatchSingleItem}
                                     className="bg-green-600 hover:bg-green-700"
