@@ -296,7 +296,8 @@ export default function InvoicesPage() {
 
             generateInvoiceListExcel(invoicesToExport, {
                 filterSummary,
-                scope: scope === "current" ? `Current Page (${currentPage})` : "All Filtered Invoices"
+                scope: scope === "current" ? `Current Page (${currentPage})` : "All Filtered Invoices",
+                customers,
             })
 
             toast({

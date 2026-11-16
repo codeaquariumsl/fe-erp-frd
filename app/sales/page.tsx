@@ -85,6 +85,7 @@ interface CustomerOrderGroup {
   customerId: number
   customerName: string
   customerType: string
+  customerAddress?: string
   contactNumber: string
   orderCount: number
   pendingCount: number
@@ -111,7 +112,8 @@ const groupOrdersByCustomer = (orders: SalesOrder[]): CustomerOrderGroup[] => {
         customerId,
         customerName,
         customerType: order.customerType || "",
-        contactNumber: order.contactNumber || "",
+        customerAddress: order.deliveryAddress || order.Customer?.address || "",
+        contactNumber: order.contactNumber || order.Customer?.contactNumber || "",
         orderCount: 0,
         pendingCount: 0,
         approvedCount: 0,
@@ -125,6 +127,12 @@ const groupOrdersByCustomer = (orders: SalesOrder[]): CustomerOrderGroup[] => {
     }
 
     const group = map.get(key)!
+    if (!group.customerAddress && (order.deliveryAddress || order.Customer?.address)) {
+      group.customerAddress = order.deliveryAddress || order.Customer?.address || ""
+    }
+    if (!group.contactNumber && (order.contactNumber || order.Customer?.contactNumber)) {
+      group.contactNumber = order.contactNumber || order.Customer?.contactNumber || ""
+    }
     group.orderCount += 1
     group.totalAmount += Number(order.totalAmount ?? 0)
     group.orders.push(order)
@@ -1403,7 +1411,7 @@ export default function SalesPage() {
 
       // ── Sheet 1: Orders Summary ──────────────────────────────────────────
       const summaryHeader = [
-        "Order #", "Invoice Type", "Customer", "Route", "Type", "Delivery?",
+        "Order #", "Invoice Type", "Customer", "Customer Address", "Contact Number", "Route", "Type", "Delivery?",
         "Order Date", "Delivery Date", "Dispatch Date",
         "Sales Person", "PO Number",
         "Total Items", "Total Qty",
@@ -1412,6 +1420,9 @@ export default function SalesPage() {
       ]
       const summaryRows: any[][] = [summaryHeader]
       orders.forEach((o) => {
+        const customerObj = customers.find(c => String(c.id) === String(o.customerId))
+        const customerAddress = o.deliveryAddress || customerObj?.address || o.Customer?.address || ""
+        const contactNumber = o.contactNumber || customerObj?.contactNumber || o.Customer?.contactNumber || ""
         const routeName = o.Route?.routeName || routes.find(r => String(r.id) === String(o.routeId))?.routeName || ""
         const items = (o.items as any[]) || []
         const totalItemsCount = items.length
@@ -1425,6 +1436,8 @@ export default function SalesPage() {
           o.orderNumber,
           o.isTaxInvoice ? "Tax Invoice" : "Regular",
           o.customerName || "",
+          customerAddress,
+          contactNumber,
           routeName,
           o.customerType || "",
           o.isDelivery ? "Delivery" : "Pickup",
@@ -1444,7 +1457,7 @@ export default function SalesPage() {
       })
       const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows)
       wsSummary["!cols"] = [
-        { wch: 16 }, { wch: 13 }, { wch: 30 }, { wch: 20 }, { wch: 14 }, { wch: 10 },
+        { wch: 16 }, { wch: 13 }, { wch: 30 }, { wch: 35 }, { wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 10 },
         { wch: 13 }, { wch: 13 }, { wch: 13 },
         { wch: 20 }, { wch: 14 },
         { wch: 12 }, { wch: 12 },
@@ -1455,13 +1468,17 @@ export default function SalesPage() {
 
       // ── Sheet 2: Item Details ────────────────────────────────────────────
       const itemHeader = [
-        "Order #", "Customer", "Order Date", "SO Status", "DO Status",
+        "Order #", "Customer", "Customer Address", "Contact Number", "Order Date", "SO Status", "DO Status",
         "Item Name", "Code", "Unit", "Qty", "Free Qty", "Total Qty", "Unit Price (LKR)",
         "Discount %", "Tax Item?",
         "Line Total (LKR)",
       ]
       const itemRows: any[][] = [itemHeader]
       orders.forEach((o) => {
+        const customerObj = customers.find(c => String(c.id) === String(o.customerId))
+        const customerAddress = o.deliveryAddress || customerObj?.address || o.Customer?.address || ""
+        const contactNumber = o.contactNumber || customerObj?.contactNumber || o.Customer?.contactNumber || ""
+
         if (o.items && (o.items as any[]).length > 0) {
           (o.items as any[]).forEach((item: any) => {
             const itemName = item.item?.name || item.Item?.name || item.itemName || item.name || ""
@@ -1474,6 +1491,8 @@ export default function SalesPage() {
             itemRows.push([
               o.orderNumber,
               o.customerName || "",
+              customerAddress,
+              contactNumber,
               o.orderDate ? o.orderDate.substring(0, 10) : "",
               o.status || "",
               o.deliveryOrderStatus || "No DO",
@@ -1492,6 +1511,7 @@ export default function SalesPage() {
         } else {
           itemRows.push([
             o.orderNumber, o.customerName || "",
+            customerAddress, contactNumber,
             o.orderDate ? o.orderDate.substring(0, 10) : "",
             o.status || "", o.deliveryOrderStatus || "No DO",
             "", "", "", "", "", "", "", "", "", "",
@@ -1500,7 +1520,7 @@ export default function SalesPage() {
       })
       const wsItems = XLSX.utils.aoa_to_sheet(itemRows)
       wsItems["!cols"] = [
-        { wch: 16 }, { wch: 30 }, { wch: 13 }, { wch: 12 }, { wch: 14 },
+        { wch: 16 }, { wch: 30 }, { wch: 35 }, { wch: 18 }, { wch: 13 }, { wch: 12 }, { wch: 14 },
         { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 },
         { wch: 11 }, { wch: 10 }, { wch: 16 },
       ]
@@ -1631,6 +1651,7 @@ export default function SalesPage() {
       const customerSheetHeader = [
         "Customer",
         "Customer Type",
+        "Customer Address",
         "Contact Number",
         "Total Orders",
         "Pending",
@@ -1656,10 +1677,15 @@ export default function SalesPage() {
         csCancelledTotal += cancelledRejected
         csAmountTotal += g.totalAmount
 
+        const customerObj = customers.find(c => String(c.id) === String(g.customerId))
+        const address = g.customerAddress || customerObj?.address || ""
+        const contact = g.contactNumber || customerObj?.contactNumber || ""
+
         customerSheetRows.push([
           g.customerName,
           g.customerType,
-          g.contactNumber,
+          address,
+          contact,
           g.orderCount,
           g.pendingCount,
           g.approvedCount,
@@ -1674,6 +1700,7 @@ export default function SalesPage() {
           "TOTAL",
           `${customerSummaryGroups.length} Customers`,
           "",
+          "",
           csOrdersTotal,
           csPendingTotal,
           csApprovedTotal,
@@ -1687,7 +1714,8 @@ export default function SalesPage() {
       wsCustomerSummary["!cols"] = [
         { wch: 32 },
         { wch: 16 },
-        { wch: 16 },
+        { wch: 35 },
+        { wch: 18 },
         { wch: 14 },
         { wch: 12 },
         { wch: 12 },

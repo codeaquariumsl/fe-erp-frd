@@ -1323,7 +1323,7 @@ function transformSalesOrder(backendOrder: any): SalesOrder {
     customerType: backendOrder.Customer?.type ?? "",
     customerIsTaxInclusive: backendOrder.Customer?.isTaxInclusive ?? false,
     customerTaxNumber: backendOrder.Customer?.taxNumber ?? "",
-    contactNumber: backendOrder.Customer?.contactNumber ?? "",
+    contactNumber: backendOrder.Customer?.contactNumber ?? backendOrder.contactNumber ?? "",
     orderDate: backendOrder.orderDate,
     dispatchDate: backendOrder.dispatchDate,
     timeSlot: backendOrder.timeslot,
@@ -1349,13 +1349,14 @@ function transformSalesOrder(backendOrder: any): SalesOrder {
     status: backendOrder.status,
     deliveryOrderStatus: backendOrder.deliveryOrderStatus ?? "Pending",
     paymentStatus: backendOrder.paymentStatus ?? "",
-    deliveryAddress: backendOrder.Customer?.address ?? "",
+    deliveryAddress: backendOrder.deliveryAddress || backendOrder.Customer?.address || "",
     poNumber: backendOrder.poNumber ?? "",
     cancelReason: backendOrder.cancelReason ?? "",
     createdAt: backendOrder.createdAt,
     createdUserName: backendOrder.createdUserName,
     updatedAt: backendOrder.updatedAt,
     summary: backendOrder.summary,
+    Customer: backendOrder.Customer ?? null,
   }
 }
 

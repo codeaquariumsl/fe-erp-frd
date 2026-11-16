@@ -1058,6 +1058,7 @@ export const generateInvoiceListExcel = (
             dateTo?: string;
         };
         scope?: string;
+        customers?: any[];
     }
 ) => {
     const wb = XLSX.utils.book_new();
@@ -1094,7 +1095,8 @@ export const generateInvoiceListExcel = (
             'Type',
             'Date',
             'Customer Name',
-            'Contact',
+            'Customer Address',
+            'Contact Number',
             'Order Type',
             'Sales Order #',
             'Delivery Order #',
@@ -1138,8 +1140,10 @@ export const generateInvoiceListExcel = (
             ? (typeof inv.invoiceDate === 'string' ? inv.invoiceDate.substring(0, 10) : format(new Date(inv.invoiceDate), 'yyyy-MM-dd'))
             : '-';
 
-        const customerName = inv.customer?.name || inv.Customer?.name || '-';
-        const contact = inv.customer?.contactNumber || inv.Customer?.contactNumber || '-';
+        const cust = inv.customer || inv.Customer || (options?.customers?.find((c: any) => String(c.id) === String(inv.customerId)));
+        const customerName = cust?.name || inv.customer?.name || inv.Customer?.name || '-';
+        const customerAddress = cust?.address || inv.customer?.address || inv.Customer?.address || inv.SalesOrder?.deliveryAddress || '-';
+        const contact = cust?.contactNumber || inv.customer?.contactNumber || inv.Customer?.contactNumber || inv.SalesOrder?.contactNumber || '-';
         const isDelivery = inv.SalesOrder?.isDelivery ? 'Delivery' : 'Pickup';
         const soNumber = inv.SalesOrder?.orderNumber || (inv.salesOrderId ? String(inv.salesOrderId) : '-');
         const doNumber = inv.DeliveryOrder?.doNumber || (inv.deliveryOrderId ? String(inv.deliveryOrderId) : '-');
@@ -1152,6 +1156,7 @@ export const generateInvoiceListExcel = (
             inv.isTaxInvoice ? 'Tax Invoice' : 'Regular',
             dateStr,
             customerName,
+            customerAddress,
             contact,
             isDelivery,
             soNumber,
@@ -1181,6 +1186,7 @@ export const generateInvoiceListExcel = (
         '',
         '',
         '',
+        '',
         Number(totalSubtotal.toFixed(2)),
         Number(totalTax.toFixed(2)),
         Number(totalAmount.toFixed(2)),
@@ -1199,7 +1205,8 @@ export const generateInvoiceListExcel = (
         { wch: 15 }, // Type
         { wch: 14 }, // Date
         { wch: 32 }, // Customer Name
-        { wch: 16 }, // Contact
+        { wch: 35 }, // Customer Address
+        { wch: 18 }, // Contact Number
         { wch: 14 }, // Order Type
         { wch: 18 }, // Sales Order #
         { wch: 18 }, // Delivery Order #
@@ -1226,6 +1233,8 @@ export const generateInvoiceListExcel = (
             'Invoice #',
             'Date',
             'Customer Name',
+            'Customer Address',
+            'Contact Number',
             'Invoice Status',
             'Payment Status',
             'Item Code',
@@ -1250,7 +1259,10 @@ export const generateInvoiceListExcel = (
         const dateStr = inv.invoiceDate
             ? (typeof inv.invoiceDate === 'string' ? inv.invoiceDate.substring(0, 10) : format(new Date(inv.invoiceDate), 'yyyy-MM-dd'))
             : '-';
-        const customerName = inv.customer?.name || inv.Customer?.name || '-';
+        const cust = inv.customer || inv.Customer || (options?.customers?.find((c: any) => String(c.id) === String(inv.customerId)));
+        const customerName = cust?.name || inv.customer?.name || inv.Customer?.name || '-';
+        const customerAddress = cust?.address || inv.customer?.address || inv.Customer?.address || inv.SalesOrder?.deliveryAddress || '-';
+        const contactNumber = cust?.contactNumber || inv.customer?.contactNumber || inv.Customer?.contactNumber || inv.SalesOrder?.contactNumber || '-';
         const invStatus = inv.status || 'Pending';
         const payStatus = getPaymentStatusText(inv);
 
@@ -1274,6 +1286,8 @@ export const generateInvoiceListExcel = (
                     inv.invoiceNumber || '-',
                     dateStr,
                     customerName,
+                    customerAddress,
+                    contactNumber,
                     invStatus,
                     payStatus,
                     it.code || it.item?.barcode || it.item?.sku || it.Item?.barcode || it.Item?.sku || '-',
@@ -1294,6 +1308,8 @@ export const generateInvoiceListExcel = (
                 inv.invoiceNumber || '-',
                 dateStr,
                 customerName,
+                customerAddress,
+                contactNumber,
                 invStatus,
                 payStatus,
                 '-',
@@ -1321,6 +1337,8 @@ export const generateInvoiceListExcel = (
         '',
         '',
         '',
+        '',
+        '',
         Number(totalItemQty.toFixed(2)),
         Number(totalFreeQty.toFixed(2)),
         '',
@@ -1336,6 +1354,8 @@ export const generateInvoiceListExcel = (
         { wch: 18 }, // Invoice #
         { wch: 14 }, // Date
         { wch: 30 }, // Customer Name
+        { wch: 35 }, // Customer Address
+        { wch: 18 }, // Contact Number
         { wch: 14 }, // Invoice Status
         { wch: 16 }, // Payment Status
         { wch: 16 }, // Item Code
