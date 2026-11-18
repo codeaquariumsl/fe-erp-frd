@@ -4,7 +4,7 @@ import * as XLSX from "xlsx"
 
 import { Fragment, useEffect, useState, useMemo, useRef } from "react"
 // Customer filter state for sales orders
-import { salesOrdersApi, SalesOrder, SalesOrderItem, customersApi, Customer, timeSlotsApi, itemsApi, locationsApi, Location, usersApi, User, accountingReportsApi, routesApi, Route } from "@/lib/api"
+import { salesOrdersApi, SalesOrder, SalesOrderItem, customersApi, Customer, timeSlotsApi, itemsApi, locationsApi, Location, usersApi, User, accountingReportsApi, routesApi, Route, stockApi } from "@/lib/api"
 
 // Extended Customer interface with routes
 interface CustomerWithRoutes extends Customer {
@@ -495,41 +495,67 @@ export default function SalesPage() {
         })
         .finally(() => setIsCheckingLimit(false))
 
-      // Get both customer-specific items and default items
+      const locationId = localStorage.getItem("selectedLocationId") || 1
+
+      // Get customer-specific items, default items, and stock data
       Promise.all([
-        salesOrdersApi.getItemsByCustomer(Number(newOrder.customerId), 1), // Using locationId = 1 for now
-        itemsApi.getAll() // get all items as default
+        salesOrdersApi.getItemsByCustomer(Number(newOrder.customerId), Number(locationId) || 1),
+        itemsApi.getAll(),
+        stockApi.getAll({ locationId: Number(locationId) || 1 }).catch(() => ({ success: false, data: [] }))
       ])
-        .then(([customerItems, defaultItems]) => {
+        .then(([customerItems, defaultItems, stockResponse]) => {
           const customerItemsData = customerItems?.data || [];
           const defaultItemsData = Array.isArray(defaultItems) ? defaultItems : (defaultItems as any)?.data || [];
 
-          if (customerItemsData.length > 0) {
-            // Create a Set of item IDs that the customer already has specific settings for
-            const customerItemIds = new Set(customerItemsData.map((ci: any) => ci.item.id));
-
-            // Helper to normalize availability from default item payloads
-            const normalizeAvailability = (di: any) => {
-              if (di.availability && typeof di.availability.totalAvailableQuantity === 'number') {
-                return {
-                  totalAvailableQuantity: di.availability.totalAvailableQuantity || 0,
-                  totalWeight: di.availability.totalWeight || 0,
-                  totalStockRecords: di.availability.totalStockRecords || 0,
-                  hasStock: !!di.availability.hasStock,
-                  allowsNegativeStock: !!di.availability.allowsNegativeStock
-                }
-              }
-
-              // Some endpoints return qty or include availability on the nested item
-              const possibleQty = di.qty ?? di.item?.qty ?? 0
-              return {
-                totalAvailableQuantity: possibleQty,
-                totalWeight: di.totalWeight ?? 0,
-                totalStockRecords: 0,
-                hasStock: possibleQty > 0,
-                allowsNegativeStock: !!di.allowsMinus
+          // Map store stock (excluding lorry stock and unassigned rows)
+          const rawStockData = stockResponse?.success && Array.isArray(stockResponse?.data)
+            ? stockResponse.data
+            : Array.isArray(stockResponse) ? stockResponse : [];
+          const storeStockMap: Record<number, number> = {};
+          rawStockData.forEach((s: any) => {
+            if (s.storeId !== null && !s.lorryId) {
+              const itemId = Number(s.itemId);
+              if (itemId) {
+                storeStockMap[itemId] = (storeStockMap[itemId] || 0) + Number(s.availableQty || 0);
               }
             }
+          });
+
+          // Helper to normalize availability from default item payloads and storeStockMap
+          const normalizeAvailability = (di: any) => {
+            const itemId = di.id || di.itemId;
+            const storeQty = storeStockMap[itemId];
+            const stockQty = storeQty !== undefined ? storeQty : (di.availability?.totalAvailableQuantity ?? di.qty ?? di.item?.qty ?? 0);
+            const finalQty = Math.max(0, Number(stockQty) || 0);
+
+            return {
+              totalAvailableQuantity: finalQty,
+              totalWeight: di.availability?.totalWeight ?? di.totalWeight ?? 0,
+              totalStockRecords: di.availability?.totalStockRecords ?? (storeQty !== undefined ? 1 : 0),
+              hasStock: finalQty > 0,
+              allowsNegativeStock: !!(di.availability?.allowsNegativeStock || di.allowsMinus)
+            };
+          };
+
+          // Override customer-specific items availability with true store stock
+          const updatedCustomerItems = customerItemsData.map((ci: any) => {
+            const itemId = ci.item?.id;
+            const storeQty = storeStockMap[itemId];
+            const currentQty = storeQty !== undefined ? storeQty : (ci.availability?.totalAvailableQuantity || 0);
+            const finalQty = Math.max(0, Number(currentQty) || 0);
+            return {
+              ...ci,
+              availability: {
+                ...(ci.availability || {}),
+                totalAvailableQuantity: finalQty,
+                hasStock: finalQty > 0
+              }
+            };
+          });
+
+          if (updatedCustomerItems.length > 0) {
+            // Create a Set of item IDs that the customer already has specific settings for
+            const customerItemIds = new Set(updatedCustomerItems.map((ci: any) => ci.item.id));
 
             // Format default items to match the customer-items structure expected by the UI
             const defaultItemsToAdd = defaultItemsData
@@ -556,31 +582,9 @@ export default function SalesPage() {
               }));
 
             // Combine customer-specific items with remaining default items
-            setAvailableItems([...customerItemsData, ...defaultItemsToAdd]);
-            console.log("Loaded items:", customerItemsData.length, "customer-specific and", defaultItemsToAdd.length, "default items");
+            setAvailableItems([...updatedCustomerItems, ...defaultItemsToAdd]);
+            console.log("Loaded items:", updatedCustomerItems.length, "customer-specific and", defaultItemsToAdd.length, "default items");
           } else {
-            // Helper to normalize availability from default item payloads
-            const normalizeAvailability = (di: any) => {
-              if (di.availability && typeof di.availability.totalAvailableQuantity === 'number') {
-                return {
-                  totalAvailableQuantity: di.availability.totalAvailableQuantity || 0,
-                  totalWeight: di.availability.totalWeight || 0,
-                  totalStockRecords: di.availability.totalStockRecords || 0,
-                  hasStock: !!di.availability.hasStock,
-                  allowsNegativeStock: !!di.availability.allowsNegativeStock
-                }
-              }
-
-              const possibleQty = di.qty ?? di.item?.qty ?? 0
-              return {
-                totalAvailableQuantity: possibleQty,
-                totalWeight: di.totalWeight ?? 0,
-                totalStockRecords: 0,
-                hasStock: possibleQty > 0,
-                allowsNegativeStock: !!di.allowsMinus
-              }
-            }
-
             // If no customer-specific items, use all default items with their default codes and availability
             const itemsWithDefaultCodes = defaultItemsData.map((di: any) => ({
               item: {
@@ -609,28 +613,52 @@ export default function SalesPage() {
         .catch((err: Error) => {
           console.error("Failed to load items:", err)
           // On error, try to fetch default items as fallback
-          itemsApi.getAll()
-            .then((defaultItems) => {
+          Promise.all([
+            itemsApi.getAll(),
+            stockApi.getAll({ locationId: Number(locationId) || 1 }).catch(() => ({ success: false, data: [] }))
+          ])
+            .then(([defaultItems, stockResponse]) => {
               const defaultItemsData = Array.isArray(defaultItems) ? defaultItems : (defaultItems as any)?.data || [];
-              const defaultItemsWithCodes = defaultItemsData.map((di: any) => ({
-                item: {
-                  id: di.id,
-                  name: di.name,
-                  barcode: di.barcode,
-                  sku: di.sku,
-                  unit: di.unit,
-                  weight: di.weight,
-                  sellingPrice: di.sellingPrice,
-                  Category: di.Category,
-                  isTaxInclusive: di.isTaxInclusive
-                },
-                availability: {
-                  totalAvailableQuantity: 0 // This would need to be updated with real availability
-                },
-                customerItemCode: {
-                  code: di.sku || 'N/A' // Prefer barcode, fallback to SKU
+              const rawStockData = stockResponse?.success && Array.isArray(stockResponse?.data)
+                ? stockResponse.data
+                : Array.isArray(stockResponse) ? stockResponse : [];
+              const storeStockMap: Record<number, number> = {};
+              rawStockData.forEach((s: any) => {
+                if (s.storeId !== null && !s.lorryId) {
+                  const itemId = Number(s.itemId);
+                  if (itemId) {
+                    storeStockMap[itemId] = (storeStockMap[itemId] || 0) + Number(s.availableQty || 0);
+                  }
                 }
-              }));
+              });
+
+              const defaultItemsWithCodes = defaultItemsData.map((di: any) => {
+                const storeQty = storeStockMap[di.id];
+                const finalQty = storeQty !== undefined ? storeQty : 0;
+                return {
+                  item: {
+                    id: di.id,
+                    name: di.name,
+                    barcode: di.barcode,
+                    sku: di.sku,
+                    unit: di.unit,
+                    weight: di.weight,
+                    sellingPrice: di.sellingPrice,
+                    Category: di.Category,
+                    isTaxInclusive: di.isTaxInclusive
+                  },
+                  availability: {
+                    totalAvailableQuantity: finalQty,
+                    totalWeight: di.weight || 0,
+                    totalStockRecords: storeQty !== undefined ? 1 : 0,
+                    hasStock: finalQty > 0,
+                    allowsNegativeStock: false
+                  },
+                  customerItemCode: {
+                    code: di.sku || 'N/A'
+                  }
+                };
+              });
               setAvailableItems(defaultItemsWithCodes);
               console.log("Loaded", defaultItemsWithCodes.length, "default items as fallback");
             })
