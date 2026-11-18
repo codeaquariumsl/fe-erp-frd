@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { ERPLayout } from "@/components/layouts/erp-layout"
 import { Search, MoreHorizontal, Package, AlertTriangle, Thermometer, ArrowRightLeft, Eye, MapPin, Loader2 } from "lucide-react"
 import { useStockOperations } from "@/hooks/use-stock-operations"
-import { storesApi, categoriesApi, salesOrdersApi } from "@/lib/api"
+import { storesApi, categoriesApi, salesOrdersApi, itemsApi } from "@/lib/api"
+import { cn } from "@/lib/utils"
 
 export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -22,6 +23,7 @@ export default function InventoryPage() {
   const [showStockDetails, setShowStockDetails] = useState(false)
   const [showStockTransfer, setShowStockTransfer] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [itemTypeFilter, setItemTypeFilter] = useState<string>("all") // "all" | "finish" | "raw"
   const [stockDetails, setStockDetails] = useState<any[]>([])
   const [loadingStockDetails, setLoadingStockDetails] = useState(false)
   const [inventory, setInventory] = useState<any[]>([])
@@ -45,12 +47,13 @@ export default function InventoryPage() {
       setLoading(true)
       try {
         const locationId = localStorage.getItem("selectedLocationId")
-        // Load stores, stock, categories, and approved sales orders
-        const [storesResponse, stockResponse, categoriesResponse, approvedSalesOrdersResponse] = await Promise.all([
+        // Load stores, stock, categories, approved sales orders, and all items
+        const [storesResponse, stockResponse, categoriesResponse, approvedSalesOrdersResponse, itemsResponse] = await Promise.all([
           storesApi.getAll(),
           getAllStock({ locationId: Number(locationId) || 1 }),
           categoriesApi.getAll(),
-          salesOrdersApi.getAll({ status: "Approved" }).catch(() => ({ data: [] }))
+          salesOrdersApi.getAll({ status: "Approved" }).catch(() => ({ data: [] })),
+          itemsApi.getAll().catch(() => [])
         ])
 
         const storesData = Array.isArray(storesResponse) ? storesResponse : []
@@ -82,11 +85,31 @@ export default function InventoryPage() {
           })
         }
 
-        // Group stock data by itemId to create inventory summary
-        const itemGroups = stockData.reduce((acc: any, stock: any) => {
+        const itemsData = Array.isArray(itemsResponse)
+          ? itemsResponse
+          : Array.isArray((itemsResponse as any)?.data)
+            ? (itemsResponse as any).data
+            : []
+
+        // Group stock data by itemId to create inventory summary, initialized with all items
+        const itemGroups: Record<number, any> = {}
+
+        // Initialize with all items so both finish and raw items (including items with 0 stock) appear
+        itemsData.forEach((item: any) => {
+          itemGroups[item.id] = {
+            itemId: item.id,
+            item: item,
+            stores: [],
+            totalQty: 0,
+            totalWeight: 0
+          }
+        })
+
+        // Aggregate stock data into itemGroups
+        stockData.forEach((stock: any) => {
           const itemId = stock.itemId
-          if (!acc[itemId]) {
-            acc[itemId] = {
+          if (!itemGroups[itemId]) {
+            itemGroups[itemId] = {
               itemId: itemId,
               item: stock.Item,
               stores: [],
@@ -96,12 +119,12 @@ export default function InventoryPage() {
           }
 
           // Add to total quantities
-          acc[itemId].totalQty += stock.availableQty || 0
-          acc[itemId].totalWeight += stock.weight || 0
+          itemGroups[itemId].totalQty += stock.availableQty || 0
+          itemGroups[itemId].totalWeight += stock.weight || 0
 
           // Add store information
           if (stock.Store) {
-            acc[itemId].stores.push({
+            itemGroups[itemId].stores.push({
               storeId: stock.storeId,
               storeName: stock.Store.name,
               quantity: stock.availableQty,
@@ -110,9 +133,7 @@ export default function InventoryPage() {
               updatedAt: stock.updatedAt
             })
           }
-
-          return acc
-        }, {})
+        })
 
         // Convert grouped data to inventory format
         const inventoryData = Object.values(itemGroups).map((group: any) => {
@@ -136,11 +157,12 @@ export default function InventoryPage() {
           const balance = (group.totalQty || 0) - reservedQty
 
           return {
-            id: item.sku,
+            id: item.sku || `ITEM-${item.id}`,
             itemId: item.id,
             name: item.name,
-            barcode: item.barcode,
-            category: category?.name || "Unknown",
+            barcode: item.barcode || "",
+            category: category?.name || item.Category?.name || "Unknown",
+            isProductionRawMaterial: !!item.isProductionRawMaterial,
             quantity: group.totalQty,
             quantityInHand: group.totalQty,
             reservedQty,
@@ -230,6 +252,12 @@ export default function InventoryPage() {
     }
   }
 
+  const typeCounts = useMemo(() => {
+    const finish = inventory.filter((i) => !i.isProductionRawMaterial).length
+    const raw = inventory.filter((i) => i.isProductionRawMaterial).length
+    return { all: inventory.length, finish, raw }
+  }, [inventory])
+
   const filteredInventory = inventory.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -239,7 +267,12 @@ export default function InventoryPage() {
 
     const matchesStatus = statusFilter === "all" || item.status === statusFilter
 
-    return matchesSearch && matchesStatus
+    const matchesType =
+      itemTypeFilter === "all" ||
+      (itemTypeFilter === "finish" && !item.isProductionRawMaterial) ||
+      (itemTypeFilter === "raw" && item.isProductionRawMaterial)
+
+    return matchesSearch && matchesStatus && matchesType
   })
 
   const getStatusBadge = (status: string) => {
@@ -337,8 +370,8 @@ export default function InventoryPage() {
         {/* Search and Filters */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
@@ -348,6 +381,47 @@ export default function InventoryPage() {
                     className="pl-10 w-64"
                   />
                 </div>
+
+                {/* Item Type Filter (All / Finish / Raw) */}
+                <div className="flex items-center bg-gray-100 p-1 rounded-lg border">
+                  <button
+                    type="button"
+                    onClick={() => setItemTypeFilter("all")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                      itemTypeFilter === "all"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    )}
+                  >
+                    All Items ({typeCounts.all})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setItemTypeFilter("finish")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                      itemTypeFilter === "finish"
+                        ? "bg-white text-blue-700 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    )}
+                  >
+                    Finished Goods ({typeCounts.finish})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setItemTypeFilter("raw")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                      itemTypeFilter === "raw"
+                        ? "bg-white text-amber-700 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    )}
+                  >
+                    Raw Materials ({typeCounts.raw})
+                  </button>
+                </div>
+
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Filter by status" />
@@ -389,7 +463,11 @@ export default function InventoryPage() {
                   {filteredInventory.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                        {searchTerm ? 'No items found matching your search.' : 'No inventory items found.'}
+                        {searchTerm
+                          ? 'No items found matching your search.'
+                          : itemTypeFilter !== 'all'
+                          ? `No ${itemTypeFilter === 'finish' ? 'finished goods' : 'raw materials'} found.`
+                          : 'No inventory items found.'}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -398,7 +476,18 @@ export default function InventoryPage() {
                         <TableCell className="py-2">
                           <div>
                             <div className="font-medium">{item.name}</div>
-                            <div className="text-sm text-muted-foreground">{item.barcode}</div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                              {item.barcode && <span>{item.barcode}</span>}
+                              {item.isProductionRawMaterial ? (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
+                                  Raw Material
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200">
+                                  Finished Good
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="py-2">{item.category}</TableCell>
@@ -476,7 +565,20 @@ export default function InventoryPage() {
         <Dialog open={showStockDetails} onOpenChange={setShowStockDetails}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Stock Details - {selectedItem?.name}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <span>Stock Details - {selectedItem?.name}</span>
+                {selectedItem && (
+                  selectedItem.isProductionRawMaterial ? (
+                    <Badge variant="outline" className="text-xs font-normal bg-amber-50 text-amber-700 border-amber-200">
+                      Raw Material
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs font-normal bg-blue-50 text-blue-700 border-blue-200">
+                      Finished Good
+                    </Badge>
+                  )
+                )}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

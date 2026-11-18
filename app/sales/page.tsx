@@ -497,15 +497,24 @@ export default function SalesPage() {
 
       const locationId = localStorage.getItem("selectedLocationId") || 1
 
-      // Get customer-specific items, default items, and stock data
+      // Helper to check if item is a finished good (not raw material and allowed for direct sale)
+      const isFinishedItem = (item: any) => {
+        if (!item) return false;
+        if (item.isProductionRawMaterial) return false;
+        if (item.doNotAllowDirectSale) return false;
+        return true;
+      };
+
+      // Get customer-specific items, default finished items, and stock data
       Promise.all([
         salesOrdersApi.getItemsByCustomer(Number(newOrder.customerId), Number(locationId) || 1),
-        itemsApi.getAll(),
+        itemsApi.getFinishedGoods(),
         stockApi.getAll({ locationId: Number(locationId) || 1 }).catch(() => ({ success: false, data: [] }))
       ])
         .then(([customerItems, defaultItems, stockResponse]) => {
-          const customerItemsData = customerItems?.data || [];
-          const defaultItemsData = Array.isArray(defaultItems) ? defaultItems : (defaultItems as any)?.data || [];
+          const customerItemsData = (customerItems?.data || []).filter((ci: any) => isFinishedItem(ci.item));
+          const rawDefaultItems = Array.isArray(defaultItems) ? defaultItems : (defaultItems as any)?.data || [];
+          const defaultItemsData = rawDefaultItems.filter((di: any) => isFinishedItem(di));
 
           // Map store stock (excluding lorry stock and unassigned rows)
           const rawStockData = stockResponse?.success && Array.isArray(stockResponse?.data)
@@ -614,11 +623,12 @@ export default function SalesPage() {
           console.error("Failed to load items:", err)
           // On error, try to fetch default items as fallback
           Promise.all([
-            itemsApi.getAll(),
+            itemsApi.getFinishedGoods(),
             stockApi.getAll({ locationId: Number(locationId) || 1 }).catch(() => ({ success: false, data: [] }))
           ])
             .then(([defaultItems, stockResponse]) => {
-              const defaultItemsData = Array.isArray(defaultItems) ? defaultItems : (defaultItems as any)?.data || [];
+              const rawDefaultItems = Array.isArray(defaultItems) ? defaultItems : (defaultItems as any)?.data || [];
+              const defaultItemsData = rawDefaultItems.filter((di: any) => isFinishedItem(di));
               const rawStockData = stockResponse?.success && Array.isArray(stockResponse?.data)
                 ? stockResponse.data
                 : Array.isArray(stockResponse) ? stockResponse : [];
