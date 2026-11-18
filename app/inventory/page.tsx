@@ -7,14 +7,14 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ERPLayout } from "@/components/layouts/erp-layout"
-import { Plus, Search, MoreHorizontal, Package, AlertTriangle, Thermometer, ArrowRightLeft, Eye, MapPin, Loader2 } from "lucide-react"
+import { Search, MoreHorizontal, Package, AlertTriangle, Thermometer, ArrowRightLeft, Eye, MapPin, Loader2 } from "lucide-react"
 import { useStockOperations } from "@/hooks/use-stock-operations"
-import { itemsApi, storesApi, categoriesApi, salesOrdersApi } from "@/lib/api"
+import { storesApi, categoriesApi, salesOrdersApi } from "@/lib/api"
 
 export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -22,9 +22,6 @@ export default function InventoryPage() {
   const [showStockDetails, setShowStockDetails] = useState(false)
   const [showStockTransfer, setShowStockTransfer] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [viewMode, setViewMode] = useState<"combined" | "stores" | "lorries">("combined")
-  const [storeInventory, setStoreInventory] = useState<any[]>([])
-  const [lorryInventory, setLorryInventory] = useState<any[]>([])
   const [stockDetails, setStockDetails] = useState<any[]>([])
   const [loadingStockDetails, setLoadingStockDetails] = useState(false)
   const [inventory, setInventory] = useState<any[]>([])
@@ -89,7 +86,6 @@ export default function InventoryPage() {
               itemId: itemId,
               item: stock.Item,
               stores: [],
-              lorries: [],
               totalQty: 0,
               totalWeight: 0
             }
@@ -99,23 +95,11 @@ export default function InventoryPage() {
           acc[itemId].totalQty += stock.availableQty || 0
           acc[itemId].totalWeight += stock.weight || 0
 
-          // Add store or lorry information
+          // Add store information
           if (stock.Store) {
             acc[itemId].stores.push({
               storeId: stock.storeId,
               storeName: stock.Store.name,
-              quantity: stock.availableQty,
-              weight: stock.weight,
-              status: stock.status,
-              updatedAt: stock.updatedAt
-            })
-          }
-
-          if (stock.Lorry) {
-            acc[itemId].lorries.push({
-              lorryId: stock.lorryId,
-              lorryNumber: stock.Lorry.vehicleNumber,
-              driverName: stock.Lorry.driverName,
               quantity: stock.availableQty,
               weight: stock.weight,
               status: stock.status,
@@ -158,8 +142,8 @@ export default function InventoryPage() {
             reservedQty,
             balance,
             unit: item.unit || "box",
-            location: primaryStore?.storeName || "Multiple Locations",
-            locationCount: group.stores.length + group.lorries.length,
+            location: primaryStore?.storeName || (group.stores.length > 0 ? "Multiple Locations" : "—"),
+            locationCount: group.stores.length,
             purchasePrice: item.costPrice || 0,
             sellingPrice: item.sellingPrice || 0,
             reorderLevel: item.reorderLevelQty || 0,
@@ -167,7 +151,6 @@ export default function InventoryPage() {
             status,
             weight: group.totalWeight,
             stores: group.stores,
-            lorries: group.lorries,
             lastUpdated: group.stores.length > 0
               ? new Date(Math.max(...group.stores.map((s: any) => new Date(s.updatedAt).getTime())))
               : new Date()
@@ -175,122 +158,6 @@ export default function InventoryPage() {
         })
 
         setInventory(inventoryData)
-
-        // Create separate store-wise inventory
-        const storeStockData = stockData.filter((stock: any) => stock.storeId !== null && stock.lorryId === null)
-        const storeItemGroups = storeStockData.reduce((acc: any, stock: any) => {
-          const key = `${stock.itemId}-${stock.storeId}`
-          if (!acc[key]) {
-            acc[key] = {
-              itemId: stock.itemId,
-              storeId: stock.storeId,
-              item: stock.Item,
-              store: stock.Store,
-              quantity: 0,
-              weight: 0,
-              status: stock.status,
-              updatedAt: stock.updatedAt
-            }
-          }
-          acc[key].quantity += stock.availableQty || 0
-          acc[key].weight += stock.weight || 0
-          return acc
-        }, {})
-
-        const storeInventoryData = Object.values(storeItemGroups).map((group: any) => {
-          const item = group.item
-          const category = categoriesData.find((c: any) => c.id === item.categoryId) as any
-
-          let status = "In Stock"
-          if (group.quantity === 0) status = "Out of Stock"
-          else if (group.quantity < (item.reorderLevelQty || 50)) status = "Low Stock"
-          else if (group.quantity > (item.overstockLevelQty || 1000)) status = "Overstock"
-
-          const reservedQty = reservedQtyMap[item.id] || 0
-          const balance = (group.quantity || 0) - reservedQty
-
-          return {
-            id: `${item.sku}-${group.storeId}`,
-            itemId: item.id,
-            storeId: group.storeId,
-            name: item.name,
-            barcode: item.barcode,
-            category: category?.name || "Unknown",
-            quantity: group.quantity,
-            quantityInHand: group.quantity,
-            reservedQty,
-            balance,
-            unit: item.unit || "box",
-            storeName: group.store.name,
-            storeCapacity: group.store.capacity,
-            purchasePrice: item.costPrice || 0,
-            sellingPrice: item.sellingPrice || 0,
-            reorderLevel: item.reorderLevelQty || 0,
-            status,
-            weight: group.weight,
-            lastUpdated: new Date(group.updatedAt)
-          }
-        })
-
-        // Create separate lorry-wise inventory
-        const lorryStockData = stockData.filter((stock: any) => stock.storeId === null && stock.lorryId !== null)
-        const lorryItemGroups = lorryStockData.reduce((acc: any, stock: any) => {
-          const key = `${stock.itemId}-${stock.lorryId}`
-          if (!acc[key]) {
-            acc[key] = {
-              itemId: stock.itemId,
-              lorryId: stock.lorryId,
-              item: stock.Item,
-              lorry: stock.Lorry,
-              quantity: 0,
-              weight: 0,
-              status: stock.status,
-              updatedAt: stock.updatedAt
-            }
-          }
-          acc[key].quantity += stock.availableQty || 0
-          acc[key].weight += stock.weight || 0
-          return acc
-        }, {})
-
-        const lorryInventoryData = Object.values(lorryItemGroups).map((group: any) => {
-          const item = group.item
-          const category = categoriesData.find((c: any) => c.id === item.categoryId) as any
-
-          let status = "In Transit"
-          if (group.quantity === 0) status = "Empty"
-          else if (group.quantity < (item.reorderLevelQty || 50)) status = "Low Stock"
-
-          const reservedQty = reservedQtyMap[item.id] || 0
-          const balance = (group.quantity || 0) - reservedQty
-
-          return {
-            id: `${item.sku}-${group.lorryId}`,
-            itemId: item.id,
-            lorryId: group.lorryId,
-            name: item.name,
-            barcode: item.barcode,
-            category: category?.name || "Unknown",
-            quantity: group.quantity,
-            quantityInHand: group.quantity,
-            reservedQty,
-            balance,
-            unit: item.unit || "box",
-            vehicleNumber: group.lorry.vehicleNumber,
-            vehicleType: group.lorry.vehicleType,
-            driverName: group.lorry.driverName,
-            contactNumber: group.lorry.contactNumber,
-            capacity: group.lorry.capacityKg,
-            purchasePrice: item.costPrice || 0,
-            sellingPrice: item.sellingPrice || 0,
-            status,
-            weight: group.weight,
-            lastUpdated: new Date(group.updatedAt)
-          }
-        })
-
-        setStoreInventory(storeInventoryData)
-        setLorryInventory(lorryInventoryData)
       } catch (error) {
         console.error('Error loading inventory data:', error)
       } finally {
@@ -359,35 +226,17 @@ export default function InventoryPage() {
     }
   }
 
-  const getFilteredData = () => {
-    let data = []
-    switch (viewMode) {
-      case "stores":
-        data = storeInventory
-        break
-      case "lorries":
-        data = lorryInventory
-        break
-      default:
-        data = inventory
-    }
+  const filteredInventory = inventory.filter((item) => {
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    return data.filter((item) => {
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.storeName && item.storeName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.vehicleNumber && item.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.driverName && item.driverName.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchesStatus = statusFilter === "all" || item.status === statusFilter
 
-      const matchesStatus = statusFilter === "all" || item.status === statusFilter
-
-      return matchesSearch && matchesStatus
-    })
-  }
-
-  const filteredInventory = getFilteredData()
+    return matchesSearch && matchesStatus
+  })
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -399,10 +248,6 @@ export default function InventoryPage() {
         return <Badge variant="secondary">Out of Stock</Badge>
       case "Overstock":
         return <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">Overstock</Badge>
-      case "In Transit":
-        return <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200">In Transit</Badge>
-      case "Empty":
-        return <Badge variant="secondary">Empty</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -413,17 +258,9 @@ export default function InventoryPage() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">
-              {viewMode === "stores" ? "Store-wise Inventory" :
-                viewMode === "lorries" ? "Lorry-wise Inventory" :
-                  "Inventory Management"
-              }
-            </h1>
+            <h1 className="text-3xl font-bold">Inventory Management</h1>
             <p className="text-muted-foreground">
-              {viewMode === "stores" ? "View and manage inventory across different store locations" :
-                viewMode === "lorries" ? "Track inventory currently loaded in vehicles for delivery" :
-                  "Manage your fruit inventory and stock levels"
-              }
+              Manage your fruit inventory and stock levels
             </p>
           </div>
         </div>
@@ -437,17 +274,10 @@ export default function InventoryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-lg font-bold">
-                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> :
-                  viewMode === "stores" ? storeInventory.length :
-                    viewMode === "lorries" ? lorryInventory.length :
-                      inventory.length
-                }
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : inventory.length}
               </div>
               <p className="text-xs text-muted-foreground leading-tight">
-                {viewMode === "stores" ? "Store stock records" :
-                  viewMode === "lorries" ? "Lorry stock records" :
-                    "Active inventory items"
-                }
+                Active inventory items
               </p>
             </CardContent>
           </Card>
@@ -460,17 +290,11 @@ export default function InventoryPage() {
             <CardContent>
               <div className="text-lg font-bold">
                 {loading ? <Loader2 className="h-6 w-6 animate-spin" /> :
-                  `LKR ${(viewMode === "stores" ? storeInventory :
-                    viewMode === "lorries" ? lorryInventory :
-                      inventory
-                  ).reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0).toLocaleString()}`
+                  `LKR ${inventory.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0).toLocaleString()}`
                 }
               </div>
               <p className="text-xs text-muted-foreground leading-tight">
-                {viewMode === "stores" ? "Store inventory value" :
-                  viewMode === "lorries" ? "Lorry inventory value" :
-                    "Current inventory value"
-                }
+                Current inventory value
               </p>
             </CardContent>
           </Card>
@@ -483,14 +307,7 @@ export default function InventoryPage() {
             <CardContent>
               <div className="text-lg font-bold">
                 {loading ? <Loader2 className="h-6 w-6 animate-spin" /> :
-                  (viewMode === "stores" ? storeInventory :
-                    viewMode === "lorries" ? lorryInventory :
-                      inventory
-                  ).filter(item =>
-                    viewMode === "lorries" ?
-                      (item.status === "Low Stock" || item.status === "Empty") :
-                      (item.status === "Low Stock" || item.status === "Out of Stock")
-                  ).length
+                  inventory.filter(item => item.status === "Low Stock" || item.status === "Out of Stock").length
                 }
               </div>
               <p className="text-xs text-muted-foreground leading-tight">Need attention</p>
@@ -499,27 +316,15 @@ export default function InventoryPage() {
 
           <Card className="h-24 flex flex-col justify-center">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3">
-              <CardTitle className="text-xs font-medium">
-                {viewMode === "stores" ? "Total Stores" :
-                  viewMode === "lorries" ? "Total Lorries" :
-                    "Total Locations"
-                }
-              </CardTitle>
+              <CardTitle className="text-xs font-medium">Total Stores</CardTitle>
               <Thermometer className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-lg font-bold">
-                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> :
-                  viewMode === "stores" ? new Set(storeInventory.map(item => item.storeId)).size :
-                    viewMode === "lorries" ? new Set(lorryInventory.map(item => item.lorryId)).size :
-                      stores.length
-                }
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : stores.length}
               </div>
               <p className="text-xs text-muted-foreground leading-tight">
-                {viewMode === "stores" ? "With stock" :
-                  viewMode === "lorries" ? "With stock" :
-                    "Active stores"
-                }
+                Active stores
               </p>
             </CardContent>
           </Card>
@@ -529,7 +334,6 @@ export default function InventoryPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              {/* <CardTitle>Inventory Items</CardTitle> */}
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -540,36 +344,16 @@ export default function InventoryPage() {
                     className="pl-10 w-64"
                   />
                 </div>
-                <Select value={viewMode} onValueChange={(value: "combined" | "stores" | "lorries") => setViewMode(value)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="View mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="combined">Combined View</SelectItem>
-                    <SelectItem value="stores">Store Stock</SelectItem>
-                    <SelectItem value="lorries">Lorry Stock</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    {viewMode === "lorries" ? (
-                      <>
-                        <SelectItem value="In Transit">In Transit</SelectItem>
-                        <SelectItem value="Low Stock">Low Stock</SelectItem>
-                        <SelectItem value="Empty">Empty</SelectItem>
-                      </>
-                    ) : (
-                      <>
-                        <SelectItem value="In Stock">In Stock</SelectItem>
-                        <SelectItem value="Low Stock">Low Stock</SelectItem>
-                        <SelectItem value="Out of Stock">Out of Stock</SelectItem>
-                        <SelectItem value="Overstock">Overstock</SelectItem>
-                      </>
-                    )}
+                    <SelectItem value="In Stock">In Stock</SelectItem>
+                    <SelectItem value="Low Stock">Low Stock</SelectItem>
+                    <SelectItem value="Out of Stock">Out of Stock</SelectItem>
+                    <SelectItem value="Overstock">Overstock</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -590,11 +374,8 @@ export default function InventoryPage() {
                     <TableHead>Qty in Hand</TableHead>
                     <TableHead>Reserved</TableHead>
                     <TableHead>Balance</TableHead>
-                    {viewMode === "stores" && <TableHead>Store</TableHead>}
-                    {viewMode === "lorries" && <TableHead>Vehicle</TableHead>}
-                    {viewMode === "lorries" && <TableHead>Driver</TableHead>}
-                    {viewMode === "combined" && <TableHead>Locations</TableHead>}
-                    {viewMode !== "lorries" && <TableHead>Reorder Level</TableHead>}
+                    <TableHead>Locations</TableHead>
+                    <TableHead>Reorder Level</TableHead>
                     <TableHead>Value</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -603,7 +384,7 @@ export default function InventoryPage() {
                 <TableBody>
                   {filteredInventory.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                         {searchTerm ? 'No items found matching your search.' : 'No inventory items found.'}
                       </TableCell>
                     </TableRow>
@@ -632,80 +413,27 @@ export default function InventoryPage() {
                             {item.balance ?? item.quantity} {item.unit}
                           </span>
                         </TableCell>
-                        {/* Store-specific columns */}
-                        {viewMode === "stores" && (
-                          <TableCell className="py-2">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3 text-blue-500" />
-                              <div>
-                                <div className="font-medium">{item.storeName}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  Capacity: {item.storeCapacity?.toLocaleString()} kg
-                                </div>
-                              </div>
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-gray-500" />
+                            <span>{item.location}</span>
+                            {item.locationCount > 1 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{item.locationCount - 1} more
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="text-sm">
+                            <div className={item.quantity < (item.reorderLevel || 0) ? "text-red-600 font-medium" : ""}>
+                              {item.quantity}/{item.reorderLevel || 0}
                             </div>
-                          </TableCell>
-                        )}
-
-                        {/* Lorry-specific columns */}
-                        {viewMode === "lorries" && (
-                          <>
-                            <TableCell className="py-2">
-                              <div className="flex items-center gap-1">
-                                <svg className="h-3 w-3 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
-                                  <path d="M15 18H9" />
-                                  <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" />
-                                  <circle cx="17" cy="18" r="2" />
-                                  <circle cx="7" cy="18" r="2" />
-                                </svg>
-                                <div>
-                                  <div className="font-medium">{item.vehicleNumber}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {item.vehicleType} - {item.capacity} kg
-                                  </div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-2">
-                              <div>
-                                <div className="font-medium">{item.driverName}</div>
-                                <div className="text-xs text-muted-foreground">{item.contactNumber}</div>
-                              </div>
-                            </TableCell>
-                          </>
-                        )}
-
-                        {/* Combined view location column */}
-                        {viewMode === "combined" && (
-                          <TableCell className="py-2">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3 text-gray-500" />
-                              <span>{item.location}</span>
-                              {item.locationCount > 1 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{item.locationCount - 1} more
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                        )}
-
-                        {/* Reorder level - not applicable for lorries */}
-                        {viewMode !== "lorries" && (
-                          <TableCell className="py-2">
-                            <div className="text-sm">
-                              <div className={item.quantity < (item.reorderLevel || 0) ? "text-red-600 font-medium" : ""}>
-                                {item.quantity}/{item.reorderLevel || 0}
-                              </div>
-                              {/* <div className="text-xs text-muted-foreground">{item.unit}</div> */}
-                            </div>
-                          </TableCell>
-                        )}
+                          </div>
+                        </TableCell>
                         <TableCell className="py-2">
                           <div className="text-sm">
                             <div className="font-medium">{Number(item.quantity * item.purchasePrice).toFixed(2)}</div>
-                            {/* <div className="text-xs text-muted-foreground">@ {item.purchasePrice}/unit</div> */}
                           </div>
                         </TableCell>
                         <TableCell className="py-2">{getStatusBadge(item.status)}</TableCell>
@@ -721,22 +449,13 @@ export default function InventoryPage() {
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Stock Details
                               </DropdownMenuItem>
-                              {viewMode !== "lorries" && (
-                                <DropdownMenuItem onClick={() => {
-                                  setTransferData({ ...transferData, itemId: item.itemId.toString() })
-                                  setShowStockTransfer(true)
-                                }}>
-                                  <ArrowRightLeft className="h-4 w-4 mr-2" />
-                                  Transfer Stock
-                                </DropdownMenuItem>
-                              )}
-                              {/* <DropdownMenuItem>Edit Item</DropdownMenuItem> */}
-                              {/* <DropdownMenuItem>Update Stock</DropdownMenuItem> */}
-                              {/* <DropdownMenuItem>
-                          <MapPin className="h-4 w-4 mr-2" />
-                          Move Location
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">Delete Item</DropdownMenuItem> */}
+                              <DropdownMenuItem onClick={() => {
+                                setTransferData({ ...transferData, itemId: item.itemId.toString() })
+                                setShowStockTransfer(true)
+                              }}>
+                                <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                Transfer Stock
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -812,56 +531,13 @@ export default function InventoryPage() {
                       </div>
                     )}
 
-                    {/* Lorry Stock */}
-                    {selectedItem.lorries && selectedItem.lorries.length > 0 && (
-                      <div>
-                        <h4 className="font-medium mb-2 flex items-center gap-2">
-                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
-                            <path d="M15 18H9" />
-                            <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" />
-                            <circle cx="17" cy="18" r="2" />
-                            <circle cx="7" cy="18" r="2" />
-                          </svg>
-                          Lorry Stock
-                        </h4>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Vehicle</TableHead>
-                              <TableHead>Driver</TableHead>
-                              <TableHead>Quantity</TableHead>
-                              <TableHead>Weight</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {selectedItem.lorries.map((lorry: any, index: number) => (
-                              <TableRow key={index}>
-                                <TableCell className="font-medium">{lorry.lorryNumber}</TableCell>
-                                <TableCell>{lorry.driverName}</TableCell>
-                                <TableCell>{lorry.quantity} {selectedItem.unit}</TableCell>
-                                <TableCell>{lorry.weight} kg</TableCell>
-                                <TableCell>
-                                  <Badge variant={lorry.status === 'Active' ? 'default' : 'secondary'}>
-                                    {lorry.status}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                    {/* Fallback if no detailed stock info */}
+                    {(!selectedItem.stores || selectedItem.stores.length === 0) && (
+                      <div className="text-center text-gray-500 py-8">
+                        <Package className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm">No detailed stock information available</p>
                       </div>
                     )}
-
-                    {/* Fallback if no detailed stock info */}
-                    {(!selectedItem.stores || selectedItem.stores.length === 0) &&
-                      (!selectedItem.lorries || selectedItem.lorries.length === 0) && (
-                        <div className="text-center text-gray-500 py-8">
-                          <Package className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-sm">No detailed stock information available</p>
-                        </div>
-                      )}
                   </div>
                 ) : (
                   <div className="text-center text-gray-500 py-8">
@@ -908,7 +584,7 @@ export default function InventoryPage() {
                   <Card>
                     <CardContent className="pt-4 px-3 pb-3">
                       <div className="text-xl font-bold">
-                        {((selectedItem.stores?.length || 0) + (selectedItem.lorries?.length || 0))}
+                        {selectedItem.stores?.length || 0}
                       </div>
                       <p className="text-xs text-muted-foreground">Locations</p>
                     </CardContent>
