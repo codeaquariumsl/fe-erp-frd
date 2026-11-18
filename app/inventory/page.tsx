@@ -59,7 +59,11 @@ export default function InventoryPage() {
         const categoriesData = Array.isArray(categoriesResponse) ? categoriesResponse : []
         setCategories(categoriesData)
 
-        const stockData = stockResponse.success ? stockResponse.data : []
+        const rawStockData = stockResponse.success ? stockResponse.data : []
+        // Only include store stock (exclude lorry and unassigned stock records)
+        const stockData = rawStockData.filter(
+          (stock: any) => stock.storeId !== null && !stock.lorryId
+        )
 
         // Calculate reserved quantity per item from approved sales orders
         const reservedQtyMap: Record<number, number> = {}
@@ -124,7 +128,7 @@ export default function InventoryPage() {
 
           // Determine stock status
           let status = "In Stock"
-          if (group.totalQty === 0) status = "Out of Stock"
+          if (group.totalQty <= 0) status = "Out of Stock"
           else if (group.totalQty < (item.reorderLevelQty || 50)) status = "Low Stock"
           else if (group.totalQty > (item.overstockLevelQty || 1000)) status = "Overstock"
 
@@ -399,7 +403,7 @@ export default function InventoryPage() {
                         </TableCell>
                         <TableCell className="py-2">{item.category}</TableCell>
                         <TableCell className="py-2">
-                          <span className={(item.quantityInHand ?? item.quantity) < 50 ? "text-red-600 font-medium" : "font-medium"}>
+                          <span className={(item.quantityInHand ?? item.quantity) <= 0 ? "text-red-600 font-semibold" : (item.quantityInHand ?? item.quantity) < (item.reorderLevel || 50) ? "text-orange-600 font-medium" : "font-medium"}>
                             {item.quantityInHand ?? item.quantity} {item.unit}
                           </span>
                         </TableCell>
