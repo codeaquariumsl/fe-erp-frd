@@ -1028,6 +1028,19 @@ export default function DeliveryOrdersPage() {
     setEditRoute(order.routeId ? String(order.routeId) : "")
     setEditItems(order.DeliveryOrderItems ? [...order.DeliveryOrderItems] : [])
 
+    // Ensure stores are available
+    let availableStores = stores
+    if (!availableStores || availableStores.length === 0) {
+      try {
+        const fetchedStores = await storesApi.getAll<Store>()
+        availableStores = fetchedStores || []
+        setStores(availableStores)
+      } catch (err) {
+        console.error("Failed to fetch stores in handleEditOrder:", err)
+        availableStores = []
+      }
+    }
+
     // Fetch stock data for each item
     const stockData: { [key: string]: any[] } = {}
     if (order.DeliveryOrderItems) {
@@ -1061,19 +1074,23 @@ export default function DeliveryOrdersPage() {
     const storeSelections: { [key: string]: string } = {}
     if (order.DeliveryOrderItems) {
       order.DeliveryOrderItems.forEach((item: any) => {
-        // Use existing storeId if assigned
-        if (item.storeId) {
+        // Use existing storeId if assigned and valid
+        if (item.storeId && availableStores.some(s => s.id === Number(item.storeId))) {
           storeSelections[item.id] = String(item.storeId)
         } else {
-          // Find first store with sufficient stock
+          // Find first store with sufficient stock that exists in stores
           const itemStocks = stockData[item.id] || []
-          const storeWithStock = itemStocks.find((stock: any) => stock.availableQty >= item.qty)
+          const storeWithStock = itemStocks.find((stock: any) =>
+            Number(stock.availableQty) >= Number(item.qty) && availableStores.some(s => s.id === Number(stock.storeId))
+          )
 
           if (storeWithStock) {
             storeSelections[item.id] = String(storeWithStock.storeId)
+          } else if (availableStores.length > 0) {
+            // Default to first available store if no store has sufficient stock
+            storeSelections[item.id] = String(availableStores[0].id)
           } else {
-            // Default to store ID 2 if no store has sufficient stock
-            storeSelections[item.id] = "2"
+            storeSelections[item.id] = ""
           }
         }
       })
@@ -1104,15 +1121,21 @@ export default function DeliveryOrdersPage() {
         driverId: editDriver ? Number(editDriver) : null,
         vehicleId: editVehicle ? Number(editVehicle) : null,
         routeId: editRoute ? Number(editRoute) : null,
-        items: editItems.map(item => ({
-          id: item.id,
-          itemId: item.itemId,
-          qty: item.qty,
-          freeQty: Number(item.freeQty !== undefined ? item.freeQty : (item.freeIssueQty || 0)),
-          itemName: item.itemName,
-          batchId: editItemBatches[item.id] ? Number(editItemBatches[item.id]) : null, // Include selected batch
-          storeId: editItemStores[item.id] ? Number(editItemStores[item.id]) : null, // Include selected store
-        })),
+        items: editItems.map(item => {
+          const selectedStoreVal = editItemStores[item.id]
+          const storeIdNum = selectedStoreVal ? Number(selectedStoreVal) : null
+          const isValidStore = storeIdNum && stores.some(s => s.id === storeIdNum)
+
+          return {
+            id: item.id,
+            itemId: item.itemId,
+            qty: item.qty,
+            freeQty: Number(item.freeQty !== undefined ? item.freeQty : (item.freeIssueQty || 0)),
+            itemName: item.itemName,
+            batchId: editItemBatches[item.id] ? Number(editItemBatches[item.id]) : null, // Include selected batch
+            storeId: isValidStore ? storeIdNum : (stores.length > 0 ? stores[0].id : null), // Include valid selected store
+          }
+        }),
       }
       await deliveryOrdersApi.update(editOrder.id, payload)
       setEditDialogOpen(false)
@@ -1170,7 +1193,7 @@ export default function DeliveryOrdersPage() {
         setDrivers(dr)
         setVehicles(ve)
         setRoutes(ro)
-        setCustomers(Array.isArray(cu) ? cu : [])
+        setCustomers(Array.isArray(cu) ? (cu as any) : [])
         setStores(st || [])
       })
       .catch((err) => console.error("Failed to load dropdown data:", err.message))
@@ -3220,7 +3243,7 @@ export default function DeliveryOrdersPage() {
                                               )}
                                             </TableCell>
                                             <TableCell>
-                                              {/* load store list dropdown. defaul select store id 2 */}
+                                              {/* Store list dropdown */}
                                               <Select
                                                 value={editItemStores[item.id]}
                                                 onValueChange={(value) => {
